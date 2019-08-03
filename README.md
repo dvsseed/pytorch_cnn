@@ -17,5 +17,12 @@ top_OK| 3 |<img alt="top_OK-0" src="https://github.com/dvsseed/pytorch_cnn/blob/
 ## 程式
 網路架構 | 程式集 | 說明 |
 :----------: | :----------: | :----------: |
-CNN三層卷積 | cnn_l3_battery4.py + model1.py + tools1.py + dataset5.py | cnn_lx_battery: 主程式, model: 模型, tools: 工具, dataset: 資料集 |
+CNN三層卷積 | cnn_l3_battery4.py + model1.py + tools1.py + dataset5.py | cnn_lx_battery: 主程式, model: 模型, tools: 工具集, dataset: 資料集+資料預處理 |
 CNN四層卷積 | cnn_l4_battery4.py + model5.py + tools1.py + dataset5.py | 同上 |
+
+## 技巧
+* 本程式可自動判定 **GPU** 或 **CPU** 切換
+* 使用 **tensorboardX** 及 **tensorboard_logger** 做視覺化記錄
+* 使用 **adabound** 增加準確率
+* 使用 **psutil** 記錄電腦資源使用狀態: **CPU**、**Memory**、**Disk I/O**等
+* 當資料集比例(訓練:測試=80:20)時，Accuracy可達 100%
