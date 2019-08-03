@@ -1,0 +1,8 @@
+./lithiumBattery/val/bottom_NG_0.bmp 0
+./lithiumBattery/val/bottom_NG_2.bmp 0
+./lithiumBattery/val/bottom_OK_1.bmp 1
+./lithiumBattery/val/bottom_OK_3.bmp 1
+./lithiumBattery/val/top_NG_2.bmp 2
+./lithiumBattery/val/top_NG_4.bmp 2
+./lithiumBattery/val/top_OK_1.bmp 3
+./lithiumBattery/val/top_OK_3.bmp 3
