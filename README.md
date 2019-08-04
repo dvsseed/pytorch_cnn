@@ -4,7 +4,7 @@ Training Convolutional Neural Networks to Categorize LithiumBattery with PyTorch
 ## Getting started
 
 ### PyTorch
-- Install Python3 ([python.org](https://www.python.org/downloads)
+- Install Python3 ([python.org](https://www.python.org/downloads))
 - Install PyTorch ([pytorch.org](https://pytorch.org))
 - `pip3 install -r requirements.txt`
 
