@@ -1,0 +1,13 @@
+torch
+torchvision
+argparse
+adabound
+cupy
+numpy
+matplotlib
+GPUtil
+tensorboardX
+tensorboard_logger
+os
+Pillow
+psutil
