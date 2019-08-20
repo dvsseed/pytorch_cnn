@@ -40,5 +40,4 @@ CNN四層卷積 | cnn_l4_battery4.py + model5.py + tools1.py + dataset5.py | 同
 
 ## References
 [1] L. Luo, Y. Xiong, and Y. Liu, “Adaptive gradient methods with dynamic bound of learning rate,” in International Conference on Learning Representations, 2019. [Online]. Available: https://openreview.net/forum?id=Bkg3g2R9FX
-
 [2] Ioffe, Sergey, and Christian Szegedy. "Batch normalization: Accelerating deep network training by reducing internal covariate shift." arXiv preprint arXiv:1502.03167 (2015).
