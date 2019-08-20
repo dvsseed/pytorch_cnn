@@ -32,7 +32,7 @@ CNN四層卷積 | cnn_l4_battery4.py + model5.py + tools1.py + dataset5.py | 同
 * 本程式可自動判定 **GPU** 或 **CPU** 切換
 * 使用 **tensorboardX** 及 **tensorboard_logger** 做視覺化記錄
 * 使用 **adabound**(Based on Luo et al.[1]) 增加準確率
-* 使用 **Batch normalization(BN)**[2] 把數據分批執行 stochastic gradient descent 且在每批數據進行 forward propagation 時, 對每一層都執行 normalization 的處理
+* 使用 **Batch normalization(BN)**[2] 把數據分批執行 stochastic gradient descent(SGD) 且在每批mini-batch數據進行 forward propagation 時, 對每一層都執行 normalization 的處理
 * 使用 **psutil** 記錄電腦資源使用狀態: **CPU**、**Memory**、**Disk I/O**等
 * 當資料集比例(訓練:測試=80:20)時，Accuracy可達 98%, 其訓練100epochs之Accuracy及Loss function走勢圖, 如下
 <img alt="training_accuracy" src="https://github.com/dvsseed/pytorch_cnn/blob/master/training_accuracy1.png" width="400" height="300"><img alt="training_loss" src="https://github.com/dvsseed/pytorch_cnn/blob/master/training_loss1.png" width="400" height="300">
