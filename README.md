@@ -33,6 +33,7 @@ CNN四層卷積 | cnn_l4_battery4.py + model5.py + tools1.py + dataset5.py | 同
 * 使用 **tensorboardX** 及 **tensorboard_logger** 做視覺化記錄
 * 使用 **adabound**(Based on Luo et al.[1]) 增加準確率
 * 使用 **Batch normalization(BN)**[2] 把數據分批執行 stochastic gradient descent(SGD) 且在每批mini-batch數據進行 forward propagation 時, 對每一層都執行 normalization 的處理
+* 利用 **Data Augmentation**[4] 可將 20張圖片擴增至 10,000張
 * 使用 **psutil** 記錄電腦資源使用狀態: **CPU**、**Memory**、**Disk I/O**等
 * 當資料集比例(訓練:測試=80:20)時，Accuracy可達 98%, 其訓練100epochs之Accuracy及Loss function走勢圖, 如下
 <img alt="training_accuracy" src="https://github.com/dvsseed/pytorch_cnn/blob/master/training_accuracy1.png" width="400" height="300"><img alt="training_loss" src="https://github.com/dvsseed/pytorch_cnn/blob/master/training_loss1.png" width="400" height="300">
@@ -42,3 +43,8 @@ CNN四層卷積 | cnn_l4_battery4.py + model5.py + tools1.py + dataset5.py | 同
 [1] L. Luo, Y. Xiong, and Y. Liu, “Adaptive gradient methods with dynamic bound of learning rate,” in International Conference on Learning Representations, 2019. [Online]. Available: https://openreview.net/forum?id=Bkg3g2R9FX
 
 [2] Ioffe, Sergey, and Christian Szegedy. "Batch normalization: Accelerating deep network training by reducing internal covariate shift." arXiv preprint arXiv:1502.03167 (2015).
+
+[3] Zhang, Richard. "Making convolutional networks shift-invariant again." arXiv preprint arXiv:1904.11486 (2019).
+
+[4] E. Ayan and H. M. Unver, “Data augmentation im- portance for classification of skin lesions via deep learning,” in 2018 Electric Electronics, Computer Science, Biomedical Engineerings' Meeting (EBBT). IEEE, apr 2018.
+
