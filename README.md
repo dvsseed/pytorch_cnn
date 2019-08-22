@@ -27,6 +27,7 @@ top_OK| 3 |<img alt="top_OK-0" src="https://github.com/dvsseed/pytorch_cnn/blob/
 CNN三層卷積 | cnn_l3_battery4.py + model1.py + tools1.py + dataset5.py | cnn_lx_battery: 主程式, model: 模型, tools: 工具集, dataset: 資料集+資料預處理 |
 CNN四層卷積 | cnn_l4_battery4.py + model5.py + tools1.py + dataset5.py | 同上 |
 
+__footnote__: 經訓練 l3 準確率較 l4 佳!!
 
 ## 技巧
 * 本程式可自動判定 **GPU** 或 **CPU** 切換
