@@ -52,9 +52,11 @@ class ConvNet(nn.Module):
             # nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2, padding=0)
         )  # output shape (128, 16, 16)
-        self.drop_out = nn.Dropout(p=0.2, inplace=False)  # 防止过拟合
+        # self.drop_out = nn.Dropout(p=0.2, inplace=False)  # 防止过拟合
         # self.drop_out = nn.Dropout2d(p=0.25, inplace=False)
-        self.fc_drop = nn.Dropout(p=0.2, inplace=False)  # 防止过拟合, dropout 函數是為了避免 overfitting, 在訓練過程使用p=0.2是這些神經元會隨機的被關掉, 這樣的做的原因是避免神經網路在訓練的時候防止特徵之間有合作的關係
+        # self.drop_out = nn.Dropout(p=0.2)
+        # self.fc_drop = nn.Dropout(p=0.2, inplace=False)  # 防止过拟合, dropout 函數是為了避免 overfitting, 在訓練過程使用p=0.2是這些神經元會隨機的被關掉, 這樣的做的原因是避免神經網路在訓練的時候防止特徵之間有合作的關係
+        # self.fc_drop = nn.Dropout(p=0.2)  # 防止过拟合, dropout 函數是為了避免 overfitting, 在訓練過程使用p=0.2是這些神經元會隨機的被關掉, 這樣的做的原因是避免神經網路在訓練的時候防止特徵之間有合作的關係
 
         # self.fc = nn.Linear(125 * 125 * 64, num_classes)
         # self.fc = nn.Linear(250 * 250 * 32, num_classes)
@@ -70,8 +72,10 @@ class ConvNet(nn.Module):
             # nn.Linear(64, 16),
             # nn.Linear(16, num_classes)
             nn.Linear(16 * 16 * 128, 512),
-            nn.ReLU(),
-            nn.Dropout(0.2),
+            nn.ReLU(True),
+            # nn.ReLU(),
+            # nn.Dropout(0.2, inplace=False),
+            # nn.Dropout(0.2),
             nn.Linear(512, 256),
             nn.Linear(256, num_classes)
         )
@@ -86,11 +90,11 @@ class ConvNet(nn.Module):
         # 左行右列, -1在哪边哪边固定只有一列
         out = out.reshape(out.size(0), -1)
         # 以一定概率丢掉一些神经单元，防止过拟合
-        out = self.drop_out(out)
+        # out = self.drop_out(out)
         # out = self.fc1(out)
         # out = self.fc2(out)
         # out = self.fc3(out)
         out = self.fc_layers(out)
-        out = self.fc_drop(out)
+        # out = self.fc_drop(out)
         # return out
         return F.log_softmax(out, dim=1)  # 輸出用 softmax 處理

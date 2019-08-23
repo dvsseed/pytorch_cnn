@@ -4,12 +4,11 @@ import sys
 import time
 import torchvision as tv
 from torchvision.transforms import ToPILImage
-from torchvision import utils
 import psutil
 # print(psutil.__version__)
 import numpy as np
 
-from dataset6 import *
+from dataset_antialiased import *
 
 
 # Program Exits
@@ -98,9 +97,9 @@ def show1img():
             tStart = time.time()  # 計時開始
 
             # # 以下可成功show image
-            transforms.ToPILImage()(inputs[0]).show()  # image display method-1, 可標示區域
+            # transforms.ToPILImage()(inputs[0]).show()  # image display method-1, 可標示區域
             # show label's class
-            # pilshow(labels[0], inputs[0])  # image display method-2, PILImage, [255,255,255]
+            pilshow(labels[0], inputs[0])  # image display method-2, PILImage, [255,255,255]
             # npshow(labels[0], inputs[0])  # image display method-3, numpy, [1,1,1]
             # torchshow(labels[0], inputs[0])  # image display method-4, [1,1,1]
             # topilimg(labels[0], inputs[0])  # image display method-5, [255,255,255,255]
@@ -230,24 +229,22 @@ def npshow(lbl, img, should_save=False):  # img=(channels,imagesize,imagesize)
     npimg = img.numpy()  # First 将torch.FloatTensor 转换为numpy
     # plt.axis("off")  # 不显示坐标尺寸
     if str(lbl) is not None:
-        plt.text(100, 20, str(int(lbl)), style='italic', fontweight='bold',
+        plt.text(75, 8, str(lbl), style='italic', fontweight='bold',
                  bbox={'facecolor': 'red', 'alpha': 0.8, 'pad': 10})  # facecolor前景色
-    plt.title('label: ' + str(int(lbl)) + ', class: ' + str(classes[lbl]))
+    plt.title(str(lbl))
     # npimg = npimg.flatten()
     # npimg = npimg.reshape(932, 360, 3)  # Second 将shape（3,932,360）转化为（932,360）
     # c, h, w = npimg.shape
     # npimg = np.reshape(npimg, (h, w, c))
     # plt.imshow(npimg)  # Third 调用plt 将图片显示出来
     # plt.imshow(npimg, cmap='gray')  # Third 调用plt 将图片显示出来
-    # convert image back to Height, Width, Channels (H, W, C)
     plt.imshow(np.transpose(npimg, (1, 2, 0)), interpolation='nearest')  # (imagesize,imagesize,channels)
     plt.show()
 
 
 def pilshow(lbl, img):
     # plt.title(str(lbl))  # 图片标题
-    plt.title('class: ' + str(classes[lbl]) + ', label: ' + str(int(lbl)))
-    # show the image
+    plt.title(classes[lbl])
     plt.imshow(ToPILImage()(img), interpolation=None)  # "nearest"
     # plt.axis('off')  # 不显示坐标尺寸
     plt.show()  # 显示窗口
@@ -256,7 +253,7 @@ def pilshow(lbl, img):
 def topilimg(lbl, img):
     # plt.figure()
     if str(lbl) is not None:
-        plt.title('label: ' + str(int(lbl)) + ', class: ' + str(classes[lbl]))
+        plt.title(str(lbl))
     # 畫框
     # img = np.asarray(img)
     # point1 = (50, 50)
@@ -274,7 +271,7 @@ def topilimg(lbl, img):
 
 
 def torchshow(lbl, img):
-    plt.title('label: ' + str(int(lbl)) + ', class: ' + str(classes[lbl]))
+    plt.title(str(lbl))
     img = tv.utils.make_grid(img).numpy()
     plt.imshow(np.transpose(img, (1, 2, 0)))  # interpolation=None, 将图片的格式由(channels,imagesize,imagesize)转化为(imagesize,imagesize,channels)
     # plt.axis('off')
@@ -350,35 +347,4 @@ def showpilimage():
 
         # program exit
         later()
-
-
-def show_batch(imgs):
-    grid = utils.make_grid(imgs)
-    plt.imshow(grid.numpy().transpose((1, 2, 0)))
-    plt.title('Batch from data loader')
-
-
-def showgridimages():
-    for i, (images, labels) in enumerate(show_loader):
-        if(i < 4):
-            print(i, images.size(), labels.size())
-
-            show_batch(images)
-            plt.axis('off')
-            plt.show()
-
-    # program exit
-    later()
-
-
-def plot(epoch, loss, accuracy):
-    fig, ax1 = plt.subplots()
-    ax1.set_xlabel('Epoch')
-    ax1.set_ylabel('Loss')
-    ax1.plot(epoch, loss, color='red')
-    ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
-    ax2.set_ylabel('Accuracy')  # we already handled the x-label with ax1
-    ax2.plot(epoch, accuracy, color='blue')
-    fig.tight_layout()  # otherwise the right y-label is slightly clipped
-    plt.show()
 

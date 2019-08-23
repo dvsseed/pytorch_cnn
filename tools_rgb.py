@@ -9,7 +9,7 @@ import psutil
 # print(psutil.__version__)
 import numpy as np
 
-from dataset6 import *
+from dataset_rgb import *
 
 
 # Program Exits

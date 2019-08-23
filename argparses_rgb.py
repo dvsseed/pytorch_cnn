@@ -4,8 +4,8 @@ import argparse
 
 # 命令行參數
 parser = argparse.ArgumentParser(description='PyTorch CNN 3 Layers')
-parser.add_argument('--batch-size', type=int, default=4, metavar='N', help='input batch size for training (default: 4)')
-parser.add_argument('--epoch', type=int, default=200, metavar='N', help='number of epoch to train (default: 200)')
+parser.add_argument('--batch-size', type=int, default=6, metavar='N', help='input batch size for training (default: 7)')
+parser.add_argument('--epoch', type=int, default=200, metavar='N', help='number of epoch to train (default: 100)')
 parser.add_argument('--lr', type=float, default=1e-3, metavar='LR', help='learning rate (default: 0.001)')
 parser.add_argument('--momentum', type=float, default=0.5, metavar='M', help='SGD momentum (default: 0.5)')
 parser.add_argument('--no-cuda', action='store_true', default=False, help='disables CUDA training')

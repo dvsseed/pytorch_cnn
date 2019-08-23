@@ -2,6 +2,7 @@
 from __future__ import print_function
 import torch
 import torchvision.utils as vutils
+from datetime import datetime
 from torch.autograd import Variable
 if torch.cuda.is_available():
     import cupy as cp
@@ -46,26 +47,36 @@ if os.name == 'nt':
 # @autojit
 
 
-def train():
+def train(plot=False):
     # Train the model
     # Time for printing
     TStart = time.time()
-    model.train()  # set the model in "training mode"
     total_step = len(train_loader)
     # Loop for num_epochs
     # print(num_epochs)
+    # print(num_epochs)
+    sumay = 0
+    more70 = 0
+    more80 = 0
+    more90 = 0
+    eq100 = 0
+    nloss = 0
+    Epoch = np.arange(0)
+    Loss = np.arange(0)
+    Accuracy = np.arange(0)
     for epoch in range(num_epochs):
         # adjust_learning_rate(optimizer, epoch)
         total = 0
         correct = 0
+        model.train()  # set the model in "training mode"
 
         # 遍历训练数据(images, labels)
         for i, (inputs, labels) in enumerate(train_loader):
             tStart = time.time()  # 計時開始
             # 封装成Variable类型, 作为模型的输入
             # Wrap them in a Variable object
-            inputs = Variable(inputs.to(device0))  # 打包 Tensor 和一些額外資訊的元件
-            labels = Variable(labels.to(device0))
+            inputs = Variable(inputs.to(device))  # 打包 Tensor 和一些額外資訊的元件
+            labels = Variable(labels.to(device))
 
             log_value('training_labels', labels[0], epoch)
             # can start TensorBoard right away:
@@ -83,7 +94,7 @@ def train():
             # Training mode and zero gradients
             # model.train()
             # Clear the gradients
-            optimizer.zero_grad()
+            # optimizer.zero_grad()
             # Forward pass
             # 向网络中输入images, 得到output,在这一步的时候模型会自动调用model.forward(images)函数
             # output = model.forward(inputs)
@@ -92,10 +103,12 @@ def train():
             outputs = model(inputs)
 
             # 计算这损失
-            loss = criterion(outputs, labels).to(device0)
+            loss = criterion(outputs, labels).to(device)
+            nloss += loss
 
             # Backward and optimize
             # Set the parameter gradients to zero
+            optimizer.zero_grad()
             # 反向传播, Adam优化训练
             # backward pass, optimize
             # 计算反向传播
@@ -140,6 +153,7 @@ def train():
             # print("Predicted:", predicted[:batch_size])
 
             log_value('training_predicted', predicted[0], epoch)
+            log_value('training_loss', loss.item(), epoch)
 
             # Get inputs and outputs
             # print(predicted[0].dtype)
@@ -147,7 +161,8 @@ def train():
             # plt.scatter(predicted.cpu().numpy(), labels[0].cpu().numpy())
             # _ = plt.title('Training Data')
 
-            log_value('training_accuracy', (correct / total) * 100., epoch)
+            accuracy = (correct / total) * 100.
+            log_value('training_accuracy', accuracy, epoch)
 
             # if (i + 1) % batch_size == 0 and (epoch + 1) % 10 == 0:
             # if (i + 1) % batch_size == 0:
@@ -155,9 +170,25 @@ def train():
             # get the disk result as a percentage
             d_c = diskusage()
             print('Train Epoch: [{0:03}/{1:03}], Step [{2:02}/{3:02}], Loss: {4:.4f}, Accuracy: ({5:06.2f}%), Elapsed time: {6:06.4f} seconds, CPU: {7:02.2f}%, Memory: {8:02.2f}%, DiskIO: [{9:02.4f}%, {10:02.4f}%]'.format(
-                    epoch + 1, num_epochs, i + 1, total_step, loss.item(), (correct / total) * 100.,
+                    epoch + 1, num_epochs, i + 1, total_step, loss.item(), accuracy,
                     time.time() - tStart, psutil.cpu_percent(), psutil.virtual_memory().percent, d_c[0], d_c[1]))
             # print('Train Epoch: [{0:03}/{1:03}], Step [{2:02}/{3:02}], Loss: {4:.4f}, Accuracy: ({5:06.2f} %), Elapsed time: {6:06.4f} seconds, CPU: {7:02.2f}%, Memory: {8:02.2f}%, Disk: {9:02.2f}%'.format(epoch + 1, num_epochs, i + 1, total_step, loss.item(), (correct / total) * 100., time.time() - tStart, psutil.cpu_percent(), psutil.virtual_memory().percent, psutil.disk_usage('/').percent))
+
+            Epoch = np.append(Epoch, epoch + 1)
+            nloss /= len(train_loader)
+            Loss = np.append(Loss, float(nloss))
+            Accuracy = np.append(Accuracy, float(accuracy))
+
+            # to count the accuracy
+            if accuracy >= 70 and accuracy < 80:
+                more70 += 1
+            if accuracy >= 80 and accuracy < 90:
+                more80 += 1
+            if accuracy >= 90 and accuracy < 100:
+                more90 += 1
+            if accuracy == 100:
+                eq100 += 1
+            sumay += 1
 
             # 观察显存占用
             # print(torch.cuda.memory_allocated())
@@ -194,6 +225,12 @@ def train():
             # 训练的循环中，每次写入 图像名称，loss数值，n_iteration
             writer.add_scalar('Train/Loss', loss.item(), epoch)
 
+        # if (epoch + 1) % 10 == 0:
+        if accuracy > 98:
+            evaluate()
+
+    print('Training done, Elapsed time: {:.4f} seconds, Accuracy [>= 70:{:}], [>= 80:{:}], [>= 90:{:}], [= 100:{:}], [sum:{:}]'.format(time.time() - TStart, more70, more80, more90, eq100, sumay))
+    print("=" * 60)
     print('Training done, Elapsed time: {:.4f} seconds.'.format(time.time() - TStart))
     print("=" * 60)
     f.write('Training done, Elapsed time: {:.4f} seconds.\n'.format(time.time() - TStart))
@@ -203,10 +240,13 @@ def train():
 
     # 將model保存為graph
     # with writer:
-    writer.add_graph(model, (inputs, ))
+    # writer.add_graph(model, (inputs, ))
 
     # Plot the graph
-    plot_graph(labels.data.cpu().numpy(), predicted.data.cpu().numpy(), "train.png")
+    # plot_graph(labels.data.cpu().numpy(), predicted.data.cpu().numpy(), "train.png")
+    # plot
+    if plot:
+        plot(Epoch, Loss, Accuracy)
 
 
 def evaluate():
@@ -221,14 +261,14 @@ def evaluate():
         vtotal = 0
         for i, (vinputs, vlabels) in enumerate(valid_loader):
             # 封装成Variable类型, 作为模型的输入
-            vinputs = Variable(vinputs.to(device0))
-            vlabels = Variable(vlabels.to(device0))
+            vinputs = Variable(vinputs.to(device))
+            vlabels = Variable(vlabels.to(device))
 
             # optimizer.zero_grad()
             # voutputs = model.forward(vinputs)
             voutputs = model(vinputs)
             # vloss += F.nll_loss(output, labels).item()
-            vloss += criterion(voutputs, vlabels).to(device0)
+            vloss += criterion(voutputs, vlabels).to(device)
             # vloss.backward()  # loss 實施 backpropagation
             # optimizer.step()  # 更新梯度
             # scheduler.step(vloss)  # 学习率衰减
@@ -248,7 +288,8 @@ def evaluate():
                 vlbls = np.squeeze(vlabels.cpu().numpy())
                 vpreds = np.squeeze(vpredicted.cpu().numpy())
 
-        print("Actual:", vlbls[:valid_size], ">> Predicted:", vpreds[:valid_size])
+        print("=" * 60)
+        # print("Actual:", vlbls[:valid_size], ">> Predicted:", vpreds[:valid_size])
 
         # vloss = vloss
         vloss /= vtotal
@@ -266,9 +307,10 @@ def evaluate():
         # 每10个batch画个点用于accu曲线
         # if i % 10 == 0:
         vepoch = 1
-        # niter = vepoch * len(valid_loader) + i
+        niter = vepoch * len(valid_loader) + i
         # 验证的循环中，写入预测的准确度
-        writer.add_scalar('Validate/Accu', 100. * (vcorrect / vtotal), vepoch)
+        writer.add_scalar('Validate/Accu', 100. * (vcorrect / vtotal), niter)
+        # writer.add_scalar('Validate/Accu', 100. * (vcorrect / vtotal), vepoch)
         # writer.add_scalar('Validate/Accu', vcorrect / vtotal, i + 1)
 
     print('Validating done, Elapsed time: {:.4f} seconds.'.format(time.time() - eStart))
@@ -280,32 +322,39 @@ def evaluate():
     # print(len(vlabels))
 
     # Plot the graph
-    plot_graph(vlabels.data.cpu().numpy(), vpredicted.data.cpu().numpy(), "validation.png")
+    # plot_graph(vlabels.data.cpu().numpy(), vpredicted.data.cpu().numpy(), "validation.png")
 
     # Saving & Loading a General Checkpoint for Inference and/or Resuming Training
     # Save
-    torch.save({
-        'epoch': num_epochs,
-        'model_state_dict': model.state_dict(),
-        'optimizer_state_dict': optimizer.state_dict(),
-        'loss': vloss,
-        'correct': vcorrect,
-        'total': vtotal
-    }, 'evaluate.pth')
+    if (100. * (vcorrect / vtotal)) > 99:
+        # torch.save({
+        #     'epoch': num_epochs,
+        #     'model_state_dict': model.state_dict(),
+        #     'optimizer_state_dict': optimizer.state_dict(),
+        #     'loss': vloss,
+        #     'correct': vcorrect,
+        #     'total': vtotal
+        # }, 'evaluate.pth')
+        torch.save(model, 'cnn.pth')
+        torch.save(model.state_dict(), 'cnn_model.pth')
+        # if accuracy more then 98 do test()
+        # if (100. * (vcorrect / vtotal)) > 99:
+        test()
 
 
-def test():
+def test(plot=False):
     # Test the model of LOADING MODELS from saving
     tStart = time.time()  # 計時開始
     # Load:
     # model = TheModelClass(*args, **kwargs)
-    model = ConvNet(num_classes)
-    device = torch.device('cpu')
-    model = model.to(device)
+    # model = ConvNet(num_classes)
+    # device = torch.device('cpu')
+    # model = model.to(device)
     # optimizer = TheOptimizerClass(*args, **kwargs)
-    checkpoint = torch.load('evaluate.pth')
-    model.load_state_dict(checkpoint['model_state_dict'])
-    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    # checkpoint = torch.load('evaluate.pth')
+    model = torch.load('cnn.pth')  # , map_location='cpu')  # cnn_model.pth, evaluate.pth
+    # model.load_state_dict(checkpoint['model_state_dict'])
+    # optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     # tepoch = checkpoint['epoch']
     # tloss = checkpoint['loss']
     # tcorrect = checkpoint['correct']
@@ -319,49 +368,83 @@ def test():
         tloss = 0
         tcorrect = 0
         ttotal = 0
+        nloss = 0
+        Epoch = np.arange(0)
+        Loss = np.arange(0)
+        Accuracy = np.arange(0)
         for i, (tinputs, tlabels) in enumerate(test_loader):
             # 封装成Variable类型, 作为模型的输入
-            tinputs = Variable(tinputs)
-            tlabels = Variable(tlabels)
+            tinputs = Variable(tinputs.to(device))
+            tlabels = Variable(tlabels.to(device))
 
             # optimizer.zero_grad()
             # toutputs = model.forward(tinputs)
             toutputs = model(tinputs)
-            tloss += criterion(toutputs, tlabels)
+            tloss += criterion(toutputs, tlabels).to(device)
+            nloss += tloss
             # optimizer.step()  # 更新梯度
             # scheduler.step(tloss)  # 学习率衰减
             _, tpredicted = torch.max(toutputs.data, 1)
             ttotal += tlabels.size(0)
             tcorrect += (tpredicted == tlabels).sum().item()
-            tlbls = np.squeeze(tlabels.numpy())
-            tpreds = np.squeeze(tpredicted.numpy())
+            tlbls = np.squeeze(tlabels.cpu().numpy())
+            tpreds = np.squeeze(tpredicted.cpu().numpy())
 
-        print("Actual:", tlbls[:test_size], ">> Predicted:", tpreds[:test_size])
+            taccuracy = 100. * (tcorrect / ttotal)
+
+            # testing the images
+            ftest.write(
+                'index: {0:4}, label: {1:1}, predict: {2:1}, accuracy: {3:06.2f}%\n'.format(
+                    i + 1, tlabels[0], tpredicted[0], taccuracy
+                )
+            )
+
+        # print("Actual:", tlbls[:test_size], ">> Predicted:", tpreds[:test_size])
 
         tloss /= ttotal
         d_c = diskusage()
         print(
             'Test set: Average Loss: {0:.4f}, Accuracy: [{1:02}/{2:02}] ({3:06.2f}%), Elapsed time: {4:06.4f} seconds, CPU: {5:02.2f}%, Memory: {6:02.2f}%, DiskIO: [{7:02.4f}%, {8:02.4f}%]'.format(
-                tloss, tcorrect, ttotal, 100. * (tcorrect / ttotal), time.time() - tStart, psutil.cpu_percent(),
+                tloss, tcorrect, ttotal, taccuracy, time.time() - tStart, psutil.cpu_percent(),
+                psutil.virtual_memory().percent, d_c[0], d_c[1]))
+        f.write(
+            'Test set: Average Loss: {0:.4f}, Accuracy: [{1:02}/{2:02}] ({3:06.2f}%), Elapsed time: {4:06.4f} seconds, CPU: {5:02.2f}%, Memory: {6:02.2f}%, DiskIO: [{7:02.4f}%, {8:02.4f}%]\n'.format(
+                tloss, tcorrect, ttotal, taccuracy, time.time() - tStart, psutil.cpu_percent(),
                 psutil.virtual_memory().percent, d_c[0], d_c[1]))
 
+        Epoch = np.append(Epoch, i + 1)
+        nloss /= len(test_loader)
+        Loss = np.append(Loss, float(nloss))
+        Accuracy = np.append(Accuracy, float(taccuracy))
+
         # plot 4 images to visualize the data
-        showimgresult(tinputs, tlabels, tpredicted, 100. * (tcorrect / ttotal))
+        # showimgresult(tinputs, tlabels, tpredicted, 100. * (tcorrect / ttotal))
 
     print('Testing done, Elapsed time: {:.4f} seconds.'.format(time.time() - tStart))
     print("=" * 60)
+    f.write('Testing done, Elapsed time: {:.4f} seconds.\n'.format(time.time() - tStart))
+    f.write("=" * 60)
+    f.write('\n')
 
     # Plot the graph
-    plot_graph(tlabels.data.numpy(), tpredicted.data.numpy(), "test.png")
+    # plot_graph(tlabels.data.numpy(), tpredicted.data.numpy(), "test.png")
+
+    # plot
+    if plot:
+        plot(Epoch, Loss, Accuracy)
 
 
 if __name__ == '__main__':
 
+    # record the from datetime
+    fromtime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+
     # logger = Logger('./logs')
     # 建立實體。資料存放在：'logs/'
-    writer = SummaryWriter(logdir='./logs/', comment='CNN')
+    writer = SummaryWriter(logdir='./logs/', comment='CNN-4layer')
 
     f = open('logs.txt', 'w')
+    ftest = open('tests.txt', 'w')
 
     # to show GPU
     if not nocuda:
@@ -442,7 +525,7 @@ if __name__ == '__main__':
             torch.cuda.empty_cache()
 
     # the 4 possible labels for each image
-    classes = ('bottom_NG', 'bottom_OK', 'top_NG', 'top_OK')
+    # classes = ('bottom_NG', 'bottom_OK', 'top_NG', 'top_OK')
 
     # # 一、数据读取
     print('Train Data Set: ', train_size)
@@ -454,11 +537,11 @@ if __name__ == '__main__':
     # # 單GPU
     # Device configuration
     if not nocuda:
-        device0 = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-        device1 = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
+        device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        # device1 = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
     else:
-        device0 = torch.device('cpu')
-        device1 = torch.device('cpu')
+        device = torch.device('cpu')
+        # device1 = torch.device('cpu')
     # model = ConvNet(num_classes).to(device)
     # # 多GPU训练通过torch.nn.DataParallel接口实现
     # 如：model = torch.nn.DataParallel(model, device_ids=[0,1])表示在gpu0和1上训练模型，加快训练速度
@@ -466,7 +549,7 @@ if __name__ == '__main__':
     if torch.cuda.device_count() > 1:
         model = nn.DataParallel(model, device_ids=[0, 1])
 
-    model = model.to(device0)
+    model = model.to(device)
     print(model)
     print("=" * 60)
 
@@ -513,13 +596,20 @@ if __name__ == '__main__':
 
     # show1img()  # show one image and save to jpg
     # showsomeimg()  # Let us show some of the training images
+
     train()
     evaluate()
-    test()
+    # test()
 
     # Save the model checkpoint, 儲存模型
-    torch.save(model, 'cnn.pth')
-    torch.save(model.state_dict(), 'cnn_model.pth')  # 保存
+    if os.path.isfile('cnn.pth'):
+        torch.save(model, 'cnn1.pth')
+    else:
+        torch.save(model, 'cnn.pth')
+    if os.path.isfile('cnn_model.pth'):
+        torch.save(model.state_dict(), 'cnn_model1.pth')  # 保存
+    else:
+        torch.save(model.state_dict(), 'cnn_model.pth')
 
     pid = os.getpid()
     py = psutil.Process(pid)
@@ -533,13 +623,23 @@ if __name__ == '__main__':
             GPUtil.showUtilization()
 
     # 格式化日期、時間成 2019-02-20 11:45:39 形式
-    print("Now:", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+    print("From:", fromtime)
+    nowtime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+    print("Now: ", nowtime)
+    # 時間相減得到秒數
+    endt = datetime.strptime(nowtime, "%Y-%m-%d %H:%M:%S")
+    startt = datetime.strptime(fromtime, "%Y-%m-%d %H:%M:%S")
+    seconds = (endt - startt).seconds
+    minutes = round(seconds / 60, 2)
+    hours = round(minutes / 60, 2)
+    print("Elapsed time==", hours, "hours==", minutes, "minutes==", seconds, "seconds")
     f.write("Now: ")
     f.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
     f.write('\n')
 
     # 手動關閉文件
     f.close()
+    ftest.close()
 
     # export scalar data to JSON for external processing
     writer.export_scalars_to_json('./all_scalars.json')

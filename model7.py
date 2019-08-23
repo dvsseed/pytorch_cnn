@@ -16,26 +16,33 @@ class ConvNet(nn.Module):
         self.layer1 = nn.Sequential(  # input shape (1, 256, 256)
             nn.Conv2d(
                 in_channels=1,    # input height
-                out_channels=4,  # n_filters
+                out_channels=32,  # n_filters
                 kernel_size=3,    # filter size
                 stride=1,         # filter movement/step
                 padding=1         # 如果想要 con2d 出来的图片长宽没有变化, padding=(kernel_size-1)/2 当 stride=1
-            ),  # output shape 16, 256, 256), padding=(kernel_size-1)/2 当 stride=1
-            nn.BatchNorm2d(num_features=4),
-            nn.ReLU(True),  # activation
-            nn.MaxPool2d(kernel_size=2, stride=2, padding=0)  # 池化層(池化核爲2*2,步長爲2)=最大池化  # output shape (16, 128, 128)
+            ),  # output shape 32, 256, 256), padding=(kernel_size-1)/2 当 stride=1
+            nn.BatchNorm2d(num_features=32),
+            nn.ReLU(inplace=True),  # activation
+            nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, stride=1, padding=1),  # output shape (64, 256, 256)
+            nn.ReLU(inplace=True),  # activation
+            nn.MaxPool2d(kernel_size=2, stride=2, padding=0),  # 池化層(池化核爲2*2,步長爲2)=最大池化  # output shape (64, 128, 128)
         )
-        self.layer2 = nn.Sequential(  # input shape (16, 128, 128)
-            nn.Conv2d(in_channels=4, out_channels=8, kernel_size=3, stride=1, padding=1),  # output shape (32, 128, 128)
-            nn.BatchNorm2d(num_features=8),
-            nn.ReLU(True),  # activation
-            nn.MaxPool2d(kernel_size=2, stride=2, padding=0)  # output shape (32, 64, 64)
+        self.layer2 = nn.Sequential(  # input shape (64, 128, 128)
+            nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, stride=1, padding=1),  # output shape (128, 128, 128)
+            nn.BatchNorm2d(num_features=128),
+            nn.ReLU(inplace=True),  # activation
+            nn.Conv2d(in_channels=128, out_channels=128, kernel_size=3, stride=1, padding=1),  # output shape (128, 128, 128)
+            nn.ReLU(inplace=True),  # activation
+            nn.MaxPool2d(kernel_size=2, stride=2, padding=0),  # output shape (128, 64, 64)
+            nn.Dropout2d(p=0.05),
         )
         self.layer3 = nn.Sequential(
-            nn.Conv2d(in_channels=8, out_channels=16, kernel_size=3, stride=1, padding=1),  # output shape (64, 64, 64)
-            nn.BatchNorm2d(num_features=16),
-            nn.ReLU(True),
-            nn.MaxPool2d(kernel_size=2, stride=2, padding=0)  # output shape (64, 32, 32), zero-padding
+            nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3, stride=1, padding=1),  # output shape (256, 64, 64)
+            nn.BatchNorm2d(num_features=256),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(in_channels=256, out_channels=256, kernel_size=3, stride=1, padding=1),  # output shape (256, 64, 64)
+            nn.ReLU(inplace=True),  # activation
+            nn.MaxPool2d(kernel_size=2, stride=2, padding=0)  # output shape (256, 32, 32), zero-padding
         )
         # self.drop_out = nn.Dropout(p=0.2, inplace=False)  # 防止过拟合
         # self.drop_out = nn.Dropout2d(p=0.25, inplace=False)
@@ -51,18 +58,20 @@ class ConvNet(nn.Module):
         # 初始化卷积层, full connection
         # fully connected layer, output 4 classes
         self.fc_layers = nn.Sequential(
-            nn.Linear(in_features=32 * 32 * 16, out_features=16),  # 256x256
+            nn.Dropout(p=0.1),
+            nn.Linear(in_features=32 * 32 * 256, out_features=1024),  # 256x256
             # nn.Linear(in_features=64 * 64 * 64, out_features=1024),  # 512x512
             # nn.Linear(in_features=80 * 80 * 64, out_features=512),    # 640x640
             # nn.BatchNorm1d(512),
             # nn.ReLU(),
-            # nn.ReLU(True),
+            nn.ReLU(inplace=True),
             # nn.LeakyReLU(),
             # nn.Dropout(0.2),
             # nn.Dropout(0.2, inplace=False),
-            nn.Linear(in_features=16, out_features=8),
-            # nn.ReLU(True),
-            nn.Linear(in_features=8, out_features=num_classes)
+            nn.Linear(in_features=1024, out_features=512),
+            nn.ReLU(inplace=True),
+            nn.Dropout(p=0.1),
+            nn.Linear(in_features=512, out_features=num_classes)
         )
 
     def forward(self, input):  # 定義 model 接收 input 時，data 要怎麼傳遞、經過哪些 activation function 等
@@ -70,7 +79,6 @@ class ConvNet(nn.Module):
         output = self.layer1(input)
         output = self.layer2(output)
         output = self.layer3(output)
-
         # flattens the data dimensions from 233 x 90 x 32 into 3164 x 1
         # 左行右列, -1在哪边哪边固定只有一列
         # output = output.reshape(output.size(0), -1)
@@ -78,12 +86,10 @@ class ConvNet(nn.Module):
         # 以一定概率丢掉一些神经单元，防止过拟合
         # output = self.drop_out(output)
         # torch.flatten(output, start_dim=0)
-
         # output = self.fc1(output)
         # output = self.fc2(output)
         # output = self.fc3(output)
         output = self.fc_layers(output)
         # output = self.fc_drop(output)
-
         # return output  # return output for visualization
         return F.log_softmax(output, dim=1)  # 輸出用 softmax 處理

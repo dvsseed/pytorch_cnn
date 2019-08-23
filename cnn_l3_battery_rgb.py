@@ -3,7 +3,6 @@ from __future__ import print_function
 import torch
 import torchvision.utils as vutils
 from torch.autograd import Variable
-from datetime import datetime
 if torch.cuda.is_available():
     import cupy as cp
 import os
@@ -13,17 +12,15 @@ import GPUtil
 # from logger import Logger
 from tensorboardX import SummaryWriter
 from adabound import AdaBound
-# from rectified_adam import RectifiedAdam  # Rectified ADAM
 # import pbs
 # from pytorch_monitor import init_experiment, monitor_module
 # import seaborn as sb
 # sb.set()
 from tensorboard_logger import configure, log_value
 
-from model1 import *  # 三層
+from model_rgb import *  # 三層
 # from model6 import *  # 單層測試
-# from model7 import *
-from tools1 import *
+from tools_rgb import *
 
 configure("runs", flush_secs=5)
 # unloader = transforms.ToPILImage()
@@ -97,7 +94,7 @@ def train(plot=False):
             # Training mode and zero gradients
             # model.train()
             # Clear gradients
-            # optimizer.zero_grad()
+            optimizer.zero_grad()
             # Forward pass
             # 向网络中输入images, 得到output,在这一步的时候模型会自动调用model.forward(images)函数
             # output = model.forward(inputs)
@@ -112,8 +109,6 @@ def train(plot=False):
 
             # Backward and optimize
             # Set the parameter gradients to zero
-            # clear gradients for this training step
-            optimizer.zero_grad()
             # 反向传播, Adam优化训练
             # backward pass, optimize
             # 计算反向传播
@@ -230,8 +225,8 @@ def train(plot=False):
             writer.add_scalar('Train/Loss', loss.item(), epoch)
 
         # if (epoch + 1) % 10 == 0:
-        # if accuracy > 98:
-        #    evaluate()
+        if accuracy > 98:
+            evaluate()
 
     print('Training done, Elapsed time: {:.4f} seconds, Accuracy [>= 70:{:}], [>= 80:{:}], [>= 90:{:}], [= 100:{:}], [sum:{:}]'.format(time.time() - TStart, more70, more80, more90, eq100, sumay))
     print("=" * 60)
@@ -300,7 +295,7 @@ def evaluate():
                 vpreds = np.squeeze(vpredicted.cpu().numpy())
 
         print("=" * 60)
-        # print("Actual:", vlbls[:valid_size], ">> Predicted:", vpreds[:valid_size])
+        print("Actual:", vlbls[:valid_size], ">> Predicted:", vpreds[:valid_size])
 
         # vloss = vloss
         vloss /= vtotal
@@ -345,13 +340,10 @@ def evaluate():
         #     'total': vtotal
         # }, 'evaluate.pth')
         torch.save(model, 'cnn.pth')
-        if torch.cuda.is_available():
-            torch.save(model.module.state_dict(), 'cnn_model.pth')
-        else:
-            torch.save(model.state_dict(), 'cnn_model.pth')
+        torch.save(model.state_dict(), 'cnn_model.pth')
         # if accuracy more then 98 do test()
         # if (100. * (vcorrect / vtotal)) > 99:
-        # test()
+        test()
 
 
 def test(plot=False):
@@ -361,15 +353,11 @@ def test(plot=False):
     # model = TheModelClass(*args, **kwargs)
     # model = ConvNet(num_classes)
     # device = torch.device('cpu')
-    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    if torch.cuda.is_available():
-        model = ConvNet(num_classes)
-        model.load_state_dict(torch.load('cnn_model.pth', map_location=device))
-    else:
-        model = torch.load('cnn.pth')  # , map_location='cpu')  # cnn_model.pth, evaluate.pth
-    model = model.to(device)
+    # device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    # model = model.to(device)
     # optimizer = TheOptimizerClass(*args, **kwargs)
     # checkpoint = torch.load('evaluate.pth')
+    model = torch.load('cnn.pth')  # , map_location='cpu')  # cnn_model.pth, evaluate.pth
     # model.load_state_dict(checkpoint['model_state_dict'])
     # optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     # tepoch = checkpoint['epoch']
@@ -407,7 +395,7 @@ def test(plot=False):
             tlbls = np.squeeze(tlabels.cpu().numpy())
             tpreds = np.squeeze(tpredicted.cpu().numpy())
 
-            # print("Actual:", tlbls, ">> Predicted:", tpreds)
+            print("Actual:", tlbls, ">> Predicted:", tpreds)
 
             taccuracy = 100. * (tcorrect / ttotal)
 
@@ -459,15 +447,14 @@ if __name__ == '__main__':
     fromtime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 
     # logger = Logger('./logs')
-    writer = SummaryWriter(logdir='./logs/', comment='CNN-3layer')
+    writer = SummaryWriter(logdir='./logs/', comment='CNN-4layer')
 
     f = open('logs.txt', 'w')
     ftest = open('tests.txt', 'w')
 
     # to show GPU
-    if not nocuda:
-        if torch.cuda.is_available():
-            GPUtil.showUtilization()
+    if torch.cuda.is_available():
+        GPUtil.showUtilization()
 
     # To get some memory and CPU stats
     print('CPU: ' + str(psutil.cpu_percent()))  # to get CPU usage, CPU Utilization
@@ -538,9 +525,7 @@ if __name__ == '__main__':
         print("=" * 60)
 
     # 显存和GPU占用不会被自动释放, 手動清空
-    if not nocuda:
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
+    torch.cuda.empty_cache()
 
     # the 4 possible labels for each image
     # classes = ('bottom_NG', 'bottom_OK', 'top_NG', 'top_OK')
@@ -554,22 +539,18 @@ if __name__ == '__main__':
     # # 二、网络构建
     # # 單GPU
     # Device configuration
-    if not nocuda:
-        device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-        # device1 = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
-    else:
-        device = torch.device('cpu')
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    # device1 = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
     # model = ConvNet(num_classes).to(device)
     # # 多GPU训练通过torch.nn.DataParallel接口实现
     # 如：model = torch.nn.DataParallel(model, device_ids=[0,1])表示在gpu0和1上训练模型，加快训练速度
     # 可利用指令 $ watch -n 0.1 nvidia-smi 查詢GPUs使用情況
     model = ConvNet(num_classes)
-    model = model.to(device)
     if torch.cuda.device_count() > 1:
         print("Let's use ", torch.cuda.device_count(), " GPUs")
-        model = nn.DataParallel(model, device_ids=range(torch.cuda.device_count()))
-        torch.backends.cudnn.benchmark = True
+        model = nn.DataParallel(model, device_ids=[0, 1])
 
+    model = model.to(device)
     print(model)
     print("=" * 60)
 
@@ -614,9 +595,6 @@ if __name__ == '__main__':
     pat = round(num_epochs / 10)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.9, patience=pat, verbose=False)
 
-    # Rectified ADAM
-    # optimizer = RectifiedAdam(lr=learning_rate)
-
     # show1img()  # show one image and save to jpg
     # showsomeimg()  # Let us show some of the training images
     # showpilimage()
@@ -624,7 +602,7 @@ if __name__ == '__main__':
 
     train()
     evaluate()
-    test()
+    # test()
 
     # Save the model checkpoint, 儲存模型
     if os.path.isfile('cnn.pth'):
@@ -643,21 +621,12 @@ if __name__ == '__main__':
     print("=" * 60)
 
     # to get the GPU status from NVIDIA GPUs
-    if not nocuda:
-        if torch.cuda.is_available():
-            GPUtil.showUtilization()
+    if torch.cuda.is_available():
+        GPUtil.showUtilization()
 
     # 格式化日期、時間成 2019-02-20 11:45:39 形式
     print("From:", fromtime)
-    nowtime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-    print("Now: ", nowtime)
-    # 時間相減得到秒數
-    endt = datetime.strptime(nowtime, "%Y-%m-%d %H:%M:%S")
-    startt = datetime.strptime(fromtime, "%Y-%m-%d %H:%M:%S")
-    seconds = (endt - startt).seconds
-    minutes = round(seconds / 60, 2)
-    hours = round(minutes / 60, 2)
-    print("Elapsed time==", hours, "hours==", minutes, "minutes==", seconds, "seconds")
+    print("Now: ", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
     f.write("Now: ")
     f.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
     f.write('\n')
