@@ -237,6 +237,8 @@ def train(plot=False):
     print("=" * 60)
     print('Training done, Elapsed time: {:.4f} seconds.'.format(time.time() - TStart))
     print("=" * 60)
+    f.write('Training done, Elapsed time: {:.4f} seconds, Accuracy [>= 70:{:}], [>= 80:{:}], [>= 90:{:}], [= 100:{:}], [sum:{:}]\n'.format(time.time() - TStart, more70, more80, more90, eq100, sumay))
+    f.write("=" * 60)
     f.write('Training done, Elapsed time: {:.4f} seconds.\n'.format(time.time() - TStart))
     f.write("=" * 60)
     f.write("\n")
@@ -658,9 +660,15 @@ if __name__ == '__main__':
     minutes = round(seconds / 60, 2)
     hours = round(minutes / 60, 2)
     print("Elapsed time==", hours, "hours==", minutes, "minutes==", seconds, "seconds")
-    f.write("Now: ")
-    f.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+    f.write("From:")
+    f.write(fromtime)
     f.write('\n')
+    f.write("Now: ")
+    f.write(nowtime)
+    f.write('\n')
+    f.write("Elapsed time==" + str(hours) + " hours==" + str(minutes) + " minutes==" + str(seconds) + " seconds")
+    f.write('\n')
+
 
     # 手動關閉文件
     f.close()
