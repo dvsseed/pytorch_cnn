@@ -5,6 +5,7 @@ import torchvision.utils as vutils
 from torch.autograd import Variable
 from datetime import datetime
 if torch.cuda.is_available():
+    # https://docs-cupy.chainer.org/en/stable/install.html#install-cupy
     import cupy as cp
 import os
 # os.environ['CUDA_VISIBLE_DEVICES'] = '0, 1'
@@ -20,7 +21,7 @@ from adabound import AdaBound
 # sb.set()
 from tensorboard_logger import configure, log_value
 
-from model1 import *  # 三層
+from model1 import *  # 六層, Our Model
 # from model6 import *  # 單層測試
 # from model7 import *
 from tools1 import *
@@ -214,8 +215,7 @@ def train(doplot=False):
             #    print('Memory Usage[{}]: Allocated: {} GB, Cached: {} GB'.format(torch.cuda.get_device_name(0), round(
             #        torch.cuda.memory_allocated(0) / 1024 ** 3, 1), round(torch.cuda.memory_cached(0) / 1024 ** 3, 1)))
 
-            f.write(
-                'Train Epoch: [{0:03}/{1:03}], Step [{2:02}/{3:02}], Loss: {4:.4f}, Accuracy: ({5:06.2f}%), Elapsed time: {6:06.4f} seconds, CPU: {7:02.2f}%, Memory: {8:02.2f}%, DiskIO: [{9:02.4f}%, {10:02.4f}%]\n'.format(
+            f.write('Train Epoch: [{0:03}/{1:03}], Step [{2:02}/{3:02}], Loss: {4:.4f}, Accuracy: ({5:06.2f}%), Elapsed time: {6:06.4f} seconds, CPU: {7:02.2f}%, Memory: {8:02.2f}%, DiskIO: [{9:02.4f}%, {10:02.4f}%]\n'.format(
                     epoch + 1, num_epochs, i + 1, total_step, loss.item(), accuracy,
                     time.time() - tStart, psutil.cpu_percent(), psutil.virtual_memory().percent, d_c[0], d_c[1]))
 
@@ -307,14 +307,12 @@ def evaluate():
         # vloss = vloss
         vloss /= vtotal
         d_c = diskusage()
-        print(
-            'Validate set: Average Loss: {0:.4f}, Accuracy: [{1:02}/{2:02}] ({3:06.2f}%), Elapsed time: {4:06.4f} seconds, CPU: {5:02.2f}%, Memory: {6:02.2f}%, DiskIO: [{7:02.4f}%, {8:02.4f}%]'.format(
-                vloss, vcorrect, vtotal, 100. * (vcorrect / vtotal), time.time() - eStart, psutil.cpu_percent(),
-                psutil.virtual_memory().percent, d_c[0], d_c[1]))
+        print('Validate set: Average Loss: {0:.4f}, Accuracy: [{1:02}/{2:02}] ({3:06.2f}%), Elapsed time: {4:06.4f} seconds, CPU: {5:02.2f}%, Memory: {6:02.2f}%, DiskIO: [{7:02.4f}%, {8:02.4f}%]'.format(
+              vloss, vcorrect, vtotal, 100. * (vcorrect / vtotal), time.time() - eStart, psutil.cpu_percent(),
+              psutil.virtual_memory().percent, d_c[0], d_c[1]))
         f.write("=" * 60)
         f.write('\n')
-        f.write(
-            'Validate set: Average Loss: {0:.4f}, Accuracy: [{1:02}/{2:02}] ({3:06.2f}%), Elapsed time: {4:06.4f} seconds, CPU: {5:02.2f}%, Memory: {6:02.2f}%, DiskIO: [{7:02.4f}%, {8:02.4f}%]\n'.format(
+        f.write('Validate set: Average Loss: {0:.4f}, Accuracy: [{1:02}/{2:02}] ({3:06.2f}%), Elapsed time: {4:06.4f} seconds, CPU: {5:02.2f}%, Memory: {6:02.2f}%, DiskIO: [{7:02.4f}%, {8:02.4f}%]\n'.format(
                 vloss, vcorrect, vtotal, 100. * (vcorrect / vtotal), time.time() - eStart, psutil.cpu_percent(),
                 psutil.virtual_memory().percent, d_c[0], d_c[1]))
 
@@ -347,10 +345,10 @@ def evaluate():
         #     'total': vtotal
         # }, 'evaluate.pth')
         torch.save(model, 'cnn.pth')
-        if torch.cuda.is_available():
-            torch.save(model.module.state_dict(), 'cnn_model.pth')
-        else:
-            torch.save(model.state_dict(), 'cnn_model.pth')
+        # if torch.cuda.is_available():
+        #    torch.save(model.module.state_dict(), 'cnn_model.pth')
+        # else:
+        #    torch.save(model.state_dict(), 'cnn_model.pth')
         # if accuracy more then 98 do test()
         # if (100. * (vcorrect / vtotal)) > 99:
         # test()
@@ -364,11 +362,11 @@ def test(doplot=False):
     # model = ConvNet(num_classes)
     # device = torch.device('cpu')
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    if torch.cuda.is_available():
-        model = ConvNet(num_classes)
-        model.load_state_dict(torch.load('cnn_model.pth', map_location=device))
-    else:
-        model = torch.load('cnn.pth')  # , map_location='cpu')  # cnn_model.pth, evaluate.pth
+    # if torch.cuda.is_available():
+    #    model = ConvNet(num_classes)
+    #    model.load_state_dict(torch.load('cnn_model.pth', map_location=device))
+    # else:
+    model = torch.load('cnn.pth')  # , map_location='cpu')  # cnn_model.pth, evaluate.pth
     model = model.to(device)
     # optimizer = TheOptimizerClass(*args, **kwargs)
     # checkpoint = torch.load('evaluate.pth')
@@ -391,61 +389,55 @@ def test(doplot=False):
         Epoch = np.arange(0)
         Loss = np.arange(0)
         Accuracy = np.arange(0)
-        j = 1
-        for j in range(200):
-            for i, (tinputs, tlabels) in enumerate(test_loader):
-                # 封装成Variable类型, 作为模型的输入
-                tinputs = Variable(tinputs.to(device))
-                tlabels = Variable(tlabels.to(device))
-                log_value('testing_labels', tlabels[0], j)
+        # j = 1
+        # for j in range(200):
+        for i, (tinputs, tlabels) in enumerate(test_loader):
+            # 封装成Variable类型, 作为模型的输入
+            tinputs = Variable(tinputs.to(device))
+            tlabels = Variable(tlabels.to(device))
+            log_value('testing_labels', tlabels[0])  # , j)
 
-                # optimizer.zero_grad()
-                # toutputs = model.forward(tinputs)
-                toutputs = model(tinputs)
-                tloss += criterion(toutputs, tlabels).to(device)
-                nloss += tloss
-                # optimizer.step()  # 更新梯度
-                # scheduler.step(tloss)  # 学习率衰减
-                _, tpredicted = torch.max(toutputs.data, 1)
-                ttotal += tlabels.size(0)
-                tcorrect += (tpredicted == tlabels).sum().item()
-                tlbls = np.squeeze(tlabels.cpu().numpy())
-                tpreds = np.squeeze(tpredicted.cpu().numpy())
-                log_value('testing_predicted', tpredicted[0], j)
-                log_value('testing_loss', tloss.item(), j)
+            # optimizer.zero_grad()
+            # toutputs = model.forward(tinputs)
+            toutputs = model(tinputs)
+            tloss += criterion(toutputs, tlabels).to(device)
+            nloss += tloss
+            # optimizer.step()  # 更新梯度
+            # scheduler.step(tloss)  # 学习率衰减
+            _, tpredicted = torch.max(toutputs.data, 1)
+            ttotal += tlabels.size(0)
+            tcorrect += (tpredicted == tlabels).sum().item()
+            tlbls = np.squeeze(tlabels.cpu().numpy())
+            tpreds = np.squeeze(tpredicted.cpu().numpy())
+            log_value('testing_predicted', tpredicted[0])  # , j)
+            log_value('testing_loss', tloss.item())  # , j)
 
-                # print("Actual:", tlbls, ">> Predicted:", tpreds)
+            # print("Actual:", tlbls, ">> Predicted:", tpreds)
 
-                taccuracy = 100. * (tcorrect / ttotal)
-                log_value('testing_accuracy', taccuracy, j)
+            taccuracy = 100. * (tcorrect / ttotal)
+            log_value('testing_accuracy', taccuracy)  # , j)
 
-                # testing the images
-                ftest.write(
-                    'index: {0:4}, label: {1:1}, predict: {2:1}, accuracy: {3:06.2f}%\n'.format(
-                        i + 1, tlabels[0], tpredicted[0], taccuracy
-                    )
-                )
+            # testing the images
+            ftest.write('index: {0:4}, label: {1:1}, predict: {2:1}, accuracy: {3:06.2f}%\n'.format(i + 1, tlabels[0], tpredicted[0], taccuracy))
 
-            # print("Actual:", tlbls[:test_size], ">> Predicted:", tpreds[:test_size])
+        # print("Actual:", tlbls[:test_size], ">> Predicted:", tpreds[:test_size])
 
-            tloss /= ttotal
-            d_c = diskusage()
-            print(
-                'Test set: Average Loss: {0:.4f}, Accuracy: [{1:02}/{2:02}] ({3:06.2f}%), Elapsed time: {4:06.4f} seconds, CPU: {5:02.2f}%, Memory: {6:02.2f}%, DiskIO: [{7:02.4f}%, {8:02.4f}%]'.format(
-                    tloss, tcorrect, ttotal, taccuracy, time.time() - tStart, psutil.cpu_percent(),
-                    psutil.virtual_memory().percent, d_c[0], d_c[1]))
-            f.write(
-                'Test set: Average Loss: {0:.4f}, Accuracy: [{1:02}/{2:02}] ({3:06.2f}%), Elapsed time: {4:06.4f} seconds, CPU: {5:02.2f}%, Memory: {6:02.2f}%, DiskIO: [{7:02.4f}%, {8:02.4f}%]\n'.format(
-                    tloss, tcorrect, ttotal, taccuracy, time.time() - tStart, psutil.cpu_percent(),
-                    psutil.virtual_memory().percent, d_c[0], d_c[1]))
+        tloss /= ttotal
+        d_c = diskusage()
+        print('Test set: Average Loss: {0:.4f}, Accuracy: [{1:02}/{2:02}] ({3:06.2f}%), Elapsed time: {4:06.4f} seconds, CPU: {5:02.2f}%, Memory: {6:02.2f}%, DiskIO: [{7:02.4f}%, {8:02.4f}%]'.format(
+              tloss, tcorrect, ttotal, taccuracy, time.time() - tStart, psutil.cpu_percent(),
+              psutil.virtual_memory().percent, d_c[0], d_c[1]))
+        f.write('Test set: Average Loss: {0:.4f}, Accuracy: [{1:02}/{2:02}] ({3:06.2f}%), Elapsed time: {4:06.4f} seconds, CPU: {5:02.2f}%, Memory: {6:02.2f}%, DiskIO: [{7:02.4f}%, {8:02.4f}%]\n'.format(
+                tloss, tcorrect, ttotal, taccuracy, time.time() - tStart, psutil.cpu_percent(),
+                psutil.virtual_memory().percent, d_c[0], d_c[1]))
 
-            Epoch = np.append(Epoch, i + 1)
-            nloss /= len(test_loader)
-            Loss = np.append(Loss, float(nloss))
-            Accuracy = np.append(Accuracy, float(taccuracy))
+        Epoch = np.append(Epoch, i + 1)
+        nloss /= len(test_loader)
+        Loss = np.append(Loss, float(nloss))
+        Accuracy = np.append(Accuracy, float(taccuracy))
 
-            # plot 4 images to visualize the data
-            # showimgresult(tinputs, tlabels, tpredicted, 100. * (tcorrect / ttotal))
+        # plot 4 images to visualize the data
+        # showimgresult(tinputs, tlabels, tpredicted, 100. * (tcorrect / ttotal))
 
     print('Testing done, Elapsed time: {:.4f} seconds.'.format(time.time() - tStart))
     print("=" * 60)
@@ -467,15 +459,15 @@ if __name__ == '__main__':
     fromtime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 
     # logger = Logger('./logs')
-    writer = SummaryWriter(logdir='./logs/', comment='CNN-3layer')
+    writer = SummaryWriter(logdir='./logs/', comment='CNN-6Layer-Ourmodel')
 
     f = open('logs.txt', 'w')
     ftest = open('tests.txt', 'w')
 
     # to show GPU
-    if not nocuda:
-        if torch.cuda.is_available():
-            GPUtil.showUtilization()
+    # if not nocuda:
+    #    if torch.cuda.is_available():
+    #        GPUtil.showUtilization()
 
     # To get some memory and CPU stats
     print('CPU: ' + str(psutil.cpu_percent()))  # to get CPU usage, CPU Utilization
@@ -651,9 +643,9 @@ if __name__ == '__main__':
     print("=" * 60)
 
     # to get the GPU status from NVIDIA GPUs
-    if not nocuda:
-        if torch.cuda.is_available():
-            GPUtil.showUtilization()
+    # if not nocuda:
+    #    if torch.cuda.is_available():
+    #        GPUtil.showUtilization()
 
     # 格式化日期、時間成 2019-02-20 11:45:39 形式
     print("From:", fromtime)

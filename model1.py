@@ -2,21 +2,21 @@ from __future__ import print_function
 # import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
+from argparses1 import *
 
 # Convolutional neural network (two convolutional layers)
 class ConvNet(nn.Module):
     # Our batch shape for input x is (3, 1000, 1000)
     # nn.Conv2d(3, 16, kernel_size=5, stride=1, padding=2),
     # model 要運算導數（derivative）及梯度（gradient）需要的資訊都在裡頭
-    def __init__(self, num_classes=4):  # 定義 model 中需要的參數，weight、bias 等
+    def __init__(self, num_classes=num_classes):  # 定義 model 中需要的參數，weight、bias 等
         super(ConvNet, self).__init__()
         # Input channels = 1(gray) or 3(rgb), output channels = 32
         # 初始化卷积层
         self.layer1 = nn.Sequential(  # input shape (1, 256, 256)
             nn.Conv2d(
                 in_channels=1,    # input height
-                out_channels=4,  # n_filters
+                out_channels=4,   # n_filters
                 kernel_size=3,    # filter size
                 stride=1,         # filter movement/step
                 padding=1         # 如果想要 con2d 出来的图片长宽没有变化, padding=(kernel_size-1)/2 当 stride=1
@@ -26,20 +26,32 @@ class ConvNet(nn.Module):
             nn.MaxPool2d(kernel_size=2, stride=2, padding=0)  # 池化層(池化核爲2*2,步長爲2)=最大池化  # output shape (16, 128, 128)
         )
         self.layer2 = nn.Sequential(  # input shape (16, 128, 128)
-            nn.Conv2d(in_channels=4, out_channels=8, kernel_size=3, stride=1, padding=1),  # output shape (32, 128, 128)
+            nn.Conv2d(
+                in_channels=4,
+                out_channels=8,
+                kernel_size=3,
+                stride=1,
+                padding=1
+            ),  # output shape (32, 128, 128)
             nn.BatchNorm2d(num_features=8),
             nn.ReLU(True),  # activation
             nn.MaxPool2d(kernel_size=2, stride=2, padding=0)  # output shape (32, 64, 64)
         )
         self.layer3 = nn.Sequential(
-            nn.Conv2d(in_channels=8, out_channels=16, kernel_size=3, stride=1, padding=1),  # output shape (64, 64, 64)
+            nn.Conv2d(
+                in_channels=8,
+                out_channels=16,
+                kernel_size=3,
+                stride=1,
+                padding=1
+            ),  # output shape (64, 64, 64)
             nn.BatchNorm2d(num_features=16),
             nn.ReLU(True),
             nn.MaxPool2d(kernel_size=2, stride=2, padding=0)  # output shape (64, 32, 32), zero-padding
         )
-        # self.drop_out = nn.Dropout(p=0.2, inplace=False)  # 防止过拟合
+        self.drop_out = nn.Dropout(p=0.2, inplace=False)  # 防止过拟合
         # self.drop_out = nn.Dropout2d(p=0.25, inplace=False)
-        # self.fc_drop = nn.Dropout(p=0.2, inplace=False)  # 防止过拟合
+        self.fc_drop = nn.Dropout(p=0.2, inplace=False)  # 防止过拟合
 
         # self.fc = nn.Linear(125 * 125 * 64, num_classes)
         # self.fc = nn.Linear(250 * 250 * 32, num_classes)
@@ -76,14 +88,14 @@ class ConvNet(nn.Module):
         # output = output.reshape(output.size(0), -1)
         output = output.view(output.size(0), -1)
         # 以一定概率丢掉一些神经单元，防止过拟合
-        # output = self.drop_out(output)
+        output = self.drop_out(output)
         # torch.flatten(output, start_dim=0)
 
         # output = self.fc1(output)
         # output = self.fc2(output)
         # output = self.fc3(output)
         output = self.fc_layers(output)
-        # output = self.fc_drop(output)
+        output = self.fc_drop(output)
 
         # return output  # return output for visualization
         return F.log_softmax(output, dim=1)  # 輸出用 softmax 處理

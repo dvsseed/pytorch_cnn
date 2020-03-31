@@ -6,7 +6,7 @@ import torchvision.transforms.functional as TF
 from PIL import Image
 # import random
 
-from argparses1 import *
+from argparses2 import *
 
 
 def default_loader(path):
@@ -304,7 +304,7 @@ train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=
 # train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True, num_workers=workers, pin_memory=False)
 valid_loader = DataLoader(dataset=valid_dataset, batch_size=valid_size, shuffle=False, num_workers=workers, pin_memory=True)
 # valid_loader = DataLoader(dataset=valid_dataset, batch_size=valid_size, shuffle=True, num_workers=workers, pin_memory=False)
-test_loader = DataLoader(dataset=test_dataset, batch_size=test_size, shuffle=False, num_workers=workers, pin_memory=True)
+test_loader = DataLoader(dataset=test_dataset, batch_size=1, shuffle=True, num_workers=workers, pin_memory=True)
 # test_loader = DataLoader(dataset=test_dataset, batch_size=1, shuffle=False, num_workers=workers, pin_memory=False)
 show_loader = DataLoader(dataset=show_dataset, batch_size=show_size, shuffle=False, num_workers=workers, pin_memory=True)
 # show_loader = DataLoader(dataset=show_dataset, batch_size=show_size, shuffle=True, num_workers=workers, pin_memory=False)
