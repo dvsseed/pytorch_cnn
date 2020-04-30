@@ -8,8 +8,94 @@ from torchvision import utils
 import psutil
 # print(psutil.__version__)
 import numpy as np
-
+# import torch
+import torch.nn as nn
+# from torch.autograd import Variable
+# import torchvision.models as models
 from dataset7 import *
+
+
+# 参数量计算
+def params_count(model):
+    """
+    Compute the number of parameters.
+    Args:
+        model (model): model to count the number of parameters.
+    """
+    return np.sum([p.numel() for p in model.parameters()]).item()
+
+
+# to count the model layers
+def count_model_layers(model):
+    # Common practise for initialization.
+    conv = 0
+    fc = 0
+    count = 0
+    for layer in model.modules():
+        if isinstance(layer, nn.Conv2d):
+            conv += 1
+            # nn.init.kaiming_normal_(layer.weight, mode='fan_out', nonlinearity='relu')
+            # if layer.bias is not None:
+            #     nn.init.constant_(layer.bias, val=0.0)
+        # elif isinstance(layer, nn.BatchNorm2d):
+        #     nn.init.constant_(layer.weight, val=1.0)
+        #     nn.init.constant_(layer.bias, val=0.0)
+        elif isinstance(layer, nn.Linear):
+            fc += 1
+            # nn.init.xavier_normal_(layer.weight)
+            # if layer.bias is not None:
+            #     nn.init.constant_(layer.bias, val=0.0)
+        count += 1
+
+    # Initialization with given tensor.
+    # layer.weight = nn.Parameter(tensor)
+    # print("Total = %s: Convolutional = %s, Fully connected = %s" % (count, conv, fc))
+    return count, conv, fc, conv + fc
+
+
+def print_layers_num(model):
+    # resnet = models.resnet18()
+
+    # def foo(model):
+    conv = 1
+    fc = 1
+    sequential = 1
+    count = 1
+    childrens = list(model.children())
+    # childrens = list(model.modules())
+    # print(childrens)
+    # if not childrens:
+    #     if isinstance(childrens, nn.Conv2d):
+    #         # print('conv')
+    #         conv += 1
+    #         # 可以用来统计不同层的个数
+    #         # net.register_backward_hook(print)
+    #     if isinstance(childrens, nn.Linear):
+    #         # print('fc')
+    #         fc += 1
+    # count = 0
+    for c in childrens:
+        # count += foo(c)
+        count += 1
+        if isinstance(c, nn.Sequential):
+            print(nn.Sequential)
+            sequential += 1
+        if isinstance(c, nn.Conv2d):
+            conv += 1
+        if isinstance(c, nn.Linear):
+            fc += 1
+
+        # for sub_module in model.children():
+        #     count += 1
+        #     if isinstance(sub_module, torch.nn.Conv2d):
+        #         conv += 1
+        #     if isinstance(sub_module, torch.nn.Linear):
+        #         fc += 1
+
+        # return count, conv, fc
+
+    # count, conv, fc = foo(model)
+    print("Total = %s: Convolutional = %s, Fully connected = %s" % (count, conv, fc))
 
 
 # Program Exits

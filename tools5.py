@@ -9,7 +9,141 @@ import psutil
 # print(psutil.__version__)
 import numpy as np
 import torch.nn as nn
-from dataset6 import *
+import torch
+import csv
+import os
+import sklearn.metrics
+import tqdm
+from dataset10 import *
+
+
+# Top1 就是 10 classes 十个概率值中最大max的那个概率值对应的分类恰好正确correct的频率
+def evaluteTop1(model, loader, device):
+    model.eval()
+    correct = 0
+    total = len(loader.dataset)
+
+    for x, y in loader:
+        x, y = x.to(device), y.to(device)
+        with torch.no_grad():
+            logits = model(x)
+            pred = logits.argmax(dim=1)
+            correct += torch.eq(pred, y).sum().float().item()
+            # correct += torch.eq(pred, y).sum().item()
+    return correct / total
+
+
+# Top5 则是在 10 classes 十个概率值中从大到小排序sort出前五个，然后看看这前五个分类中是否存在那个正确correct分类，再计算频率
+def evaluteTop5(model, loader, device):
+    model.eval()
+    correct = 0
+    total = len(loader.dataset)
+
+    for x, y in loader:
+        x, y = x.to(device), y.to(device)
+        with torch.no_grad():
+            logits = model(x)
+            maxk = max((1, 5))
+            y_resize = y.view(-1, 1)
+            # y_resize = y.view(-1,1)是非常关键的一步，在correct的运算中，关键就是要pred和y_resize维度匹配，而原来的y是[128]，128是batch大小
+            _, pred = logits.topk(maxk, 1, True, True)
+            # pred的维度则是[128,10]，假设这里是CIFAR10十分类；因此必须把y转化成[128,1]这种维度，但是不能直接是y.view(128,1)，因为遍历整个数据集的时候，
+            # 最后一个batch大小并不是128，所以view()里面第一个size就设为-1未知，而确保第二个size是1就行
+            correct += torch.eq(pred, y_resize).sum().float().item()
+    return correct / total
+
+
+# compute top1, top5 error using pytorch
+# usage: accuracy(output, labels, topk=(1, 5)) -- top5 error
+def accuracy(output, target, topk=(1,)):
+    """Computes the precision@k for the specified values of k"""
+    maxk = max(topk)
+    batch_size = target.size(0)
+
+    _, pred = output.topk(maxk, 1, True, True)
+    pred = pred.t()
+    correct = pred.eq(target.view(1, -1).expand_as(pred))
+
+    res = []
+    for k in topk:
+        correct_k = correct[:k].view(-1).float().sum(0)
+        res.append(correct_k.mul_(100.0 / batch_size))
+    return res
+
+
+def compute_ap(rank_list, pos_set):
+    '''
+        rank_list: 查询图像返回的结果
+        pos_list: 数据库中与查询图像相似的结果
+    '''
+    old_recall = 0.0
+    old_precision = 1.0
+    ap = 0.0
+    intersect_size = 0.0
+    for i in range(len(rank_list)):
+        if rank_list[i] in pos_set:
+            intersect_size += 1
+            recall = intersect_size / len(pos_set)
+            precision = intersect_size / (i + 1)
+            ap += (recall - old_recall) * ((old_precision + precision) / 2)
+            old_recall = recall
+            old_precision = precision
+
+    return ap
+
+
+# 计算每个类别的查准率（precision）、查全率（precision）、F1和总体指标
+def count_precision_precision_f1(data_loader, model):
+    all_label = []
+    all_prediction = []
+    for images, labels in tqdm.tqdm(data_loader):
+        # Data.
+        images, labels = images.cuda(), labels.cuda()
+
+        # Forward pass.
+        score = model(images)
+
+        # Save label and predictions.
+        prediction = torch.argmax(score, dim=1)
+        all_label.append(labels.cpu().numpy())
+        all_prediction.append(prediction.cpu().numpy())
+
+    # Compute RP and confusion matrix.
+    all_label = np.concatenate(all_label)
+    assert len(all_label.shape) == 1
+    all_prediction = np.concatenate(all_prediction)
+    assert all_label.shape == all_prediction.shape
+    micro_p, micro_r, micro_f1, _ = sklearn.metrics.precision_recall_fscore_support(
+        all_label, all_prediction, average='micro', labels=range(num_classes))
+    class_p, class_r, class_f1, class_occurence = sklearn.metrics.precision_recall_fscore_support(
+        all_label, all_prediction, average=None, labels=range(num_classes))
+    # Ci,j = #{y=i and hat_y=j}
+    confusion_mat = sklearn.metrics.confusion_matrix(
+        all_label, all_prediction, labels=range(num_classes))
+    assert confusion_mat.shape == (num_classes, num_classes)
+
+
+# 将各类结果写入电子表格
+def save_csv(path, filename, confusion_mat, label2class, class_occurence, class_p, class_r, class_f1, micro_p, micro_r,
+             micro_f1):
+    # Write results onto disk.
+    with open(os.path.join(path, filename), 'wt', encoding='utf-8') as f:
+        f = csv.writer(f)
+        f.writerow(['Class', 'Label', '# occurence', 'Precision', 'Recall', 'F1',
+                    'Confused class 1', 'Confused class 2', 'Confused class 3',
+                    'Confused 4', 'Confused class 5'])
+        for c in range(num_classes):
+            index = np.argsort(confusion_mat[:, c])[::-1][:5]
+            f.writerow([
+                label2class[c], c, class_occurence[c], '%4.3f' % class_p[c],
+                                                       '%4.3f' % class_r[c], '%4.3f' % class_f1[c],
+                                                       '%s:%d' % (label2class[index[0]], confusion_mat[index[0], c]),
+                                                       '%s:%d' % (label2class[index[1]], confusion_mat[index[1], c]),
+                                                       '%s:%d' % (label2class[index[2]], confusion_mat[index[2], c]),
+                                                       '%s:%d' % (label2class[index[3]], confusion_mat[index[3], c]),
+                                                       '%s:%d' % (label2class[index[4]], confusion_mat[index[4], c])])
+            f.writerow(['All', '', np.sum(class_occurence), micro_p, micro_r, micro_f1,
+                        '', '', '', '', ''])
 
 
 # to count the model layers
@@ -164,11 +298,11 @@ def show1img():
             # feature_images = inputs
             # current_feature_images = []
             # for layer in feature_images:
-                # x = layer(x)
-                # if isinstance(layer, nn.modules.conv.Conv2d):
-                    # get features
+            # x = layer(x)
+            # if isinstance(layer, nn.modules.conv.Conv2d):
+            # get features
             # print(inputs.shape)  # torch.Size([7, 1, 224, 224])
-                    # current_feature_images.append(x.data)
+            # current_feature_images.append(x.data)
             # feature_images.append(current_feature_images)
             # features = current_feature_images()
             # print(len(inputs))  # 7
@@ -184,8 +318,8 @@ def show1img():
             # np.savetxt(img_file, ins.numpy().reshape(ins.shape[2], -1), fmt='%.7f', delimiter=' ', newline='\n')  # ValueError: Expected 1D or 2D array, got 3D array instead
             # np.save(img_file, inputs[0].numpy())
             # a = inputs[x].reshape((2, 3, 4))
-                # np.arange(24).reshape(2, 3, 4)
-                # np.tofile(img_file, format='%s')
+            # np.arange(24).reshape(2, 3, 4)
+            # np.tofile(img_file, format='%s')
             # img_file.close()
             # program exit
             # later()
@@ -304,7 +438,8 @@ def topilimg(lbl, img):
 def torchshow(lbl, img):
     plt.title('label: ' + str(int(lbl)) + ', class: ' + str(classes[lbl]))
     img = tv.utils.make_grid(img).numpy()
-    plt.imshow(np.transpose(img, (1, 2, 0)))  # interpolation=None, 将图片的格式由(channels,imagesize,imagesize)转化为(imagesize,imagesize,channels)
+    plt.imshow(np.transpose(img, (
+    1, 2, 0)))  # interpolation=None, 将图片的格式由(channels,imagesize,imagesize)转化为(imagesize,imagesize,channels)
     # plt.axis('off')
     plt.show()
 
@@ -388,7 +523,7 @@ def show_batch(imgs):
 
 def showgridimages():
     for i, (images, labels) in enumerate(show_loader):
-        if(i < 4):
+        if (i < 4):
             print(i, images.size(), labels.size())
 
             show_batch(images)
@@ -409,4 +544,3 @@ def plot(epoch, loss, accuracy):
     ax2.plot(epoch, accuracy, color='blue')
     fig.tight_layout()  # otherwise the right y-label is slightly clipped
     plt.show()
-

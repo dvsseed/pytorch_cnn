@@ -110,7 +110,7 @@ def train(doplot=False):
 
             # 计算这损失
             # Calculate loss
-            loss = criterion(outputs, labels).to(device)
+            loss = loss_function(outputs, labels).to(device)
             nloss += loss
 
             # Backward and optimize
@@ -241,6 +241,7 @@ def train(doplot=False):
     print("=" * 60)
     f.write('Training done, Elapsed time: {:.4f} seconds, Accuracy [>= 70:{:}], [>= 80:{:}], [>= 90:{:}], [= 100:{:}], [sum:{:}]\n'.format(time.time() - TStart, more70, more80, more90, eq100, sumay))
     f.write("=" * 60)
+    f.write("\n")
     f.write('Training done, Elapsed time: {:.4f} seconds.\n'.format(time.time() - TStart))
     f.write("=" * 60)
     f.write("\n")
@@ -264,6 +265,144 @@ def train(doplot=False):
         plot(Epoch, Loss, Accuracy)
 
 
+def evaluate1():
+    # Test the model
+    eStart = time.time()  # 計時開始
+    # 将模型设为评估模式，在模型中禁用dropout或者batch normalization层
+    model.eval()
+    classnum = num_classes  # 類別=4
+    confusion_matrix = torch.zeros(classnum, classnum)
+    # 在模型中禁用autograd功能，加快计算
+    with torch.no_grad():
+        test_loss = 0
+        correct = 0
+        total = 0
+        max_confidence = 0.
+        avg_confidence = 0.
+        std_confidence = 0.
+        target_num = torch.zeros((1, classnum))
+        predict_num = torch.zeros((1, classnum))
+        acc_num = torch.zeros((1, classnum))
+
+        for batch_idx, (inputs, targets) in enumerate(valid_loader):
+            if not nocuda:
+                inputs, targets = inputs.cuda(), targets.cuda()
+            # inputs, targets = Variable(inputs, volatile=True), Variable(targets)
+            inputs, targets = Variable(inputs), Variable(targets)
+            outputs = model(inputs)
+            loss = loss_function(outputs, targets)
+            # loss is variable , if add it(+=loss) directly, there will be a bigger ang bigger graph.
+            # test_loss += loss.data[0]
+            test_loss += loss.item()
+            _, predicted = torch.max(outputs.data, 1)
+            # for t, p in zip(targets.data.cpu().view(-1), predicted.cpu().view(-1)):
+            for t, p in zip(targets.cpu().view(-1), predicted.cpu().view(-1)):
+                confusion_matrix[t.long(), p.long()] += 1
+
+            total += targets.size(0)
+            correct += predicted.eq(targets).cpu().sum()
+
+            # 計算confidence score, 相似度取四個分類classes中最大值max再加總後取平均mean, 外加取標準差std
+            max_list = []
+            for idx, d in enumerate(outputs.data):
+                # print('index:', idx, '相似度:', d)
+                smax = torch.nn.functional.softmax(d, dim=0)  # 先取 相似度softmax(四個分類)
+                # print('softmax:', smax)
+                tmax = torch.max(smax, dim=0)[0]  # 再取四個分類中最大的相似度, [0]=values, [1]=indices
+                cnmax = tmax.cpu().numpy()
+                max_list.append(cnmax)  # append to lists
+                max_confidence += cnmax  # 將所有的最大值加總
+
+            avg_confidence = (max_confidence / total).round(6)
+            std_confidence = (np.std(max_list, ddof=1)).round(6)
+
+            pre_mask = torch.zeros(outputs.size()).scatter_(1, predicted.cpu().view(-1, 1), 1.)
+            predict_num += pre_mask.sum(0)
+            tar_mask = torch.zeros(outputs.size()).scatter_(1, targets.cpu().view(-1, 1), 1.)
+            target_num += tar_mask.sum(0)
+            acc_mask = pre_mask * tar_mask
+            acc_num += acc_mask.sum(0)
+
+        print('Average of Confidence Score:', avg_confidence)  # confidence取最大再平均
+        print('Standard Deviation of Confidence Score:', std_confidence)  # 大樣本(>30)使用無偏樣本標準差ddof=1
+        f.write('Average of Confidence Score: {}\n'.format(avg_confidence))
+        f.write('Standard Deviation of Confidence Score: {}\n'.format(std_confidence))
+
+        recall = acc_num / target_num
+        precision = acc_num / predict_num
+        F1 = 2 * (recall * precision) / (recall + precision)
+        GMean = np.sqrt(recall * precision)
+        accuracy = acc_num.sum(1) / target_num.sum(1)
+        tloss = test_loss / total
+
+        # 精度调整
+        recall = (recall.numpy()[0] * 100).round(6)
+        precision = (precision.numpy()[0] * 100).round(6)
+        F1 = (F1.numpy()[0] * 100).round(6)
+        GMean = (GMean.numpy()[0] * 100).round(6)
+        accuracy = (accuracy.numpy()[0] * 100).round(6)
+        tloss *= 100
+
+        # 打印格式方便复制
+        print('Recall:', " ".join('%s%%' % id for id in recall))
+        print('Precision:', " ".join('%s%%' % id for id in precision))
+        print('Accuracy: {}%'.format(accuracy))
+        print('F1 Score:', " ".join('%s%%' % id for id in F1))
+        print('G-Mean:', " ".join('%s%%' % id for id in GMean))
+        print('Loss: {}'.format(tloss))
+        print("-" * 60)
+
+        f.write('Recall: ')
+        f.write(" ".join('%s%%' % id for id in recall))
+        f.write('\nPrecision: ')
+        f.write(" ".join('%s%%' % id for id in precision))
+        f.write('\nAccuracy: {}%\n'.format(accuracy))
+        f.write('F1 Score: ')
+        f.write(" ".join('%s%%' % id for id in F1))
+        f.write('\nG-Mean: ')
+        f.write(" ".join('%s%%' % id for id in GMean))
+        f.write('\nLoss: {}'.format(tloss))
+        f.write('\n')
+        f.write("-" * 60)
+        f.write('\n')
+
+        print('Confusion Matrix:\n{}'.format(confusion_matrix))
+        # To get the per-class accuracy: precision
+        precision_ = confusion_matrix.diag() / confusion_matrix.sum(1)
+        print('Precision: {}'.format(precision_))
+        recall_ = confusion_matrix.diag() / confusion_matrix.sum(1)
+        print('Recall: {}'.format(recall_))
+        recall1_ = confusion_matrix.diag() / confusion_matrix.sum(0)
+        print('Recall1: {}'.format(recall1_))
+        f1_ = 2 * (precision_ * recall_) / (precision_ + recall_)
+        print('F1 Score: {}'.format(f1_))
+        # mean = f1_.diagonal().mean()
+        mean_ = f1_.mean()
+        print('Mean: {}'.format(mean_))
+        print("-" * 60)
+
+        f.write('Confusion Matrix:\n{}\n'.format(confusion_matrix))
+        f.write('Precision: {}\n'.format(precision_))
+        f.write('Recall: {}\n'.format(recall_))
+        f.write('Recall1: {}\n'.format(confusion_matrix.diag() / confusion_matrix.sum(0)))
+        f.write('F1 Score: {}\n'.format(f1_))
+        f.write('Mean: {}\n'.format(mean_))
+        f.write("-" * 60)
+        f.write('\n')
+
+    print('Validating done, Elapsed time: {:.4f} seconds.'.format(time.time() - eStart))
+    print("=" * 60)
+    f.write('Validating done, Elapsed time: {:.4f} seconds.\n'.format(time.time() - eStart))
+    f.write("=" * 60)
+    f.write('\n')
+
+    # Plot the graph
+    # plot_graph(vlabels.data.cpu().numpy(), vpredicted.data.cpu().numpy(), "validation.png", 100. * (vcorrect / vtotal))
+
+    # Saving & Loading a General Checkpoint for Inference and/or Resuming Training
+    torch.save(model, 'cnn_alexnet.pth')
+
+
 def evaluate():
     # Test the model
     eStart = time.time()  # 計時開始
@@ -283,7 +422,8 @@ def evaluate():
             # voutputs = model.forward(vinputs)
             voutputs = model(vinputs)
             # vloss += F.nll_loss(output, labels).item()
-            vloss += criterion(voutputs, vlabels).to(device)
+            loss = loss_function(voutputs, vlabels).to(device)
+            vloss += loss.item()
             # vloss.backward()  # loss 實施 backpropagation
             # optimizer.step()  # 更新梯度
             # scheduler.step(vloss)  # 学习率衰减
@@ -337,7 +477,7 @@ def evaluate():
 
     # Saving & Loading a General Checkpoint for Inference and/or Resuming Training
     # Save
-    if (100. * (vcorrect / vtotal)) > 99:
+    if (100. * (vcorrect / vtotal)) > 10:  # 99:
         # torch.save({
         #     'epoch': num_epochs,
         #     'model_state_dict': model.state_dict(),
@@ -403,8 +543,9 @@ def test(doplot=False):
             # optimizer.zero_grad()
             # toutputs = model.forward(tinputs)
             toutputs = model(tinputs)
-            tloss += criterion(toutputs, tlabels).to(device)
-            nloss += tloss
+            loss = loss_function(toutputs, tlabels).to(device)
+            tloss += loss.item()
+            nloss = tloss
             # optimizer.step()  # 更新梯度
             # scheduler.step(tloss)  # 学习率衰减
             _, tpredicted = torch.max(toutputs.data, 1)
@@ -413,7 +554,7 @@ def test(doplot=False):
             tlbls = np.squeeze(tlabels.cpu().numpy())
             tpreds = np.squeeze(tpredicted.cpu().numpy())
             log_value('testing_predicted', tpredicted[0])  # , j)
-            log_value('testing_loss', tloss.item())  # , j)
+            log_value('testing_loss', tloss)  # , j)
 
             # print("Actual:", tlbls, ">> Predicted:", tpreds)
 
@@ -572,10 +713,17 @@ if __name__ == '__main__':
     if torch.cuda.device_count() > 1:
         print("Let's use ", torch.cuda.device_count(), " GPUs")
         model = nn.DataParallel(model, device_ids=range(torch.cuda.device_count()))
-        torch.backends.cudnn.benchmark = True
+        torch.backends.cudnn.benchmark = True  # Benchmark模式会提升cuDNN计算速度，但是由于计算中有随机性，每次网络前馈结果略有差异
+        torch.backends.cudnn.deterministic = True  # 避免上述的结果波动
 
     print(model)
     print("=" * 60)
+    # 计算模型整体参数量
+    num_parameters = sum(torch.numel(parameter) for parameter in model.parameters())
+    print('模型參數量: ', num_parameters)
+    print("+" * 60)
+    print("模型總層數 = %s: [Convolutional卷積層數 = %s, Fully connected全連接層數 = %s => 共 %s layers]" % count_model_layers(model))
+    print("+" * 60)
 
     # Enable monitoring
     # monitor_module(model, writer,
@@ -589,7 +737,7 @@ if __name__ == '__main__':
     # # 损失函数通过torch.nn包实现
     # CrossEntropyLoss()接口表示交叉熵
     # 该函数包含了 SoftMax activation 和 cross entorpy，所以在神经网络结构定义的时候不需要定义softmax activation
-    criterion = nn.CrossEntropyLoss()
+    loss_function = nn.CrossEntropyLoss()
     # # 优化函数通过torch.optim包实现
     # Adam: A Method for Stochastic Optimization (https://arxiv.org/abs/1412.6980)
     # optimizer = optim.Adam([var1, var2], lr = 0.0001)
@@ -627,7 +775,8 @@ if __name__ == '__main__':
     # showgridimages()  # show batch images
 
     train()
-    evaluate()
+    # evaluate()
+    evaluate1()
     test()
 
     # Save the model checkpoint, 儲存模型

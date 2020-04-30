@@ -1,7 +1,8 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+# import torch.nn.functional as F
 from utils import load_state_dict_from_url
+# # # ref. https://pytorch.org/docs/stable/_modules/torchvision/models/alexnet.html#alexnet
 
 
 __all__ = ['AlexNet', 'alexnet']
@@ -18,8 +19,8 @@ class AlexNet(nn.Module):
     def __init__(self, num_classes=4):
         super(AlexNet, self).__init__()
         self.features = nn.Sequential(
-            # nn.Conv2d(3, 64, kernel_size=11, stride=4, padding=2),
-            nn.Conv2d(1, 64, kernel_size=11, stride=4, padding=2),
+            nn.Conv2d(3, 64, kernel_size=11, stride=4, padding=2),
+            # nn.Conv2d(1, 64, kernel_size=11, stride=4, padding=2),
             nn.ReLU(inplace=True),
             nn.MaxPool2d(kernel_size=3, stride=2),
             nn.Conv2d(64, 192, kernel_size=5, padding=2),
@@ -49,8 +50,8 @@ class AlexNet(nn.Module):
         x = self.avgpool(x)
         x = torch.flatten(x, 1)
         x = self.classifier(x)
-        # return x
-        return F.log_softmax(x, dim=1)  # 輸出用 softmax 處理
+        return x
+        # return F.log_softmax(x, dim=1)  # 輸出用 softmax 處理
 
 
 def alexnet(pretrained=False, progress=True, **kwargs):

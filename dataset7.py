@@ -16,8 +16,8 @@ def default_loader(path):
     # gamma(float类型): 非零实数，公式中的γ 也是非零实数。gamma大于1使得阴影部分更暗，gamma小于1使得暗的区域亮些
     # gain(float): 常量乘数
     # return TF.adjust_gamma(Image.open(path).convert('L'), 1)
-    return Image.open(path).convert('L')  # black/white
-    # return Image.open(path).convert('RGB')
+    # return Image.open(path).convert('L')  # black/white
+    return Image.open(path).convert('RGB')
 
 
 # # 自定义一个数据读取接口
@@ -76,6 +76,7 @@ class ImageFolder(Dataset):
 grayTransform = transforms.Compose([transforms.Grayscale(num_output_channels=1),
                                     transforms.RandomGrayscale(p=0.1),
                                     transforms.Resize(256),
+                                    # transforms.Resize(224),
                                     # 随机切成224x224 大小图片 统一图片格式
                                     transforms.CenterCrop(224),
                                     # transforms.RandomRotation(degrees=15),
@@ -104,9 +105,11 @@ doTransform = transforms.Compose([
     # transforms.Resize(size=(256, 256)),
     # transforms.Resize(256, interpolation=2),
     transforms.Resize(256),
+    # transforms.Resize(224),
     # transforms.Resize(256, interpolation=3),
     # transforms.CenterCrop(size=224),
     # transforms.CenterCrop(256),
+    transforms.CenterCrop(224),
     # transforms.CenterCrop(size=(512, 512)),
     # transforms.RandomCrop(256, padding=4),
     # transforms.RandomCrop(256),
@@ -118,7 +121,8 @@ doTransform = transforms.Compose([
     # Normalize 会让所有像素范围处于-1到+1之间
     # transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
     # transforms.Normalize((0.4914,), (0.2023,)),
-    # transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                         std=[0.229, 0.224, 0.225]),
     # transforms.Normalize(mean=(0.485,), std=(0.229,))
     # transforms.Normalize(mean=(0.456,), std=(0.224,))
     # transforms.Normalize(mean=(0.406,), std=(0.225,))
@@ -129,7 +133,11 @@ doTransform = transforms.Compose([
 # Normalize the test set same as training set without augmentation
 testTransform = transforms.Compose([
     transforms.Resize(256),
+    # transforms.Resize(224),
+    transforms.CenterCrop(224),
     transforms.ToTensor(),
+    transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                         std=[0.229, 0.224, 0.225]),
     # transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
     # transforms.Normalize((0.4914,), (0.2023,)),
 ])
@@ -146,7 +154,8 @@ image_transforms = {
         transforms.Grayscale(num_output_channels=1),  # Convert image to grayscale, 对数据进行降维操作，也就是RGB->GRAY
         # transforms.RandomResizedCrop(size=256, scale=(0.8, 1.0)),
         # 将输入的PIL图片转换成给定的尺寸的大小
-        transforms.Resize(size=(256, 256), interpolation=3),
+        # transforms.Resize(size=(256, 256), interpolation=3),
+        transforms.Resize(size=(224, 224), interpolation=3),
         # 做比例放縮
         transforms.CenterCrop(size=224),  # Image net standards, 从中心位置裁剪
         # transforms.FiveCrop(size=224),  # 对图片进行上下左右以及中心裁剪，获得 5 张图片，返回一个 4D-tensor
@@ -189,7 +198,8 @@ image_transforms = {
     'valid':
     transforms.Compose([
         transforms.Grayscale(num_output_channels=1),
-        transforms.Resize(size=(256, 256), interpolation=3),
+        # transforms.Resize(size=(256, 256), interpolation=3),
+        transforms.Resize(size=(224, 224), interpolation=3),
         # transforms.Resize(size=(224, 224)),
         transforms.CenterCrop(size=224),
         # transforms.RandomCrop(size=224, padding=1, pad_if_needed=True),  # 依据给定的 size 随机裁剪
@@ -212,7 +222,8 @@ image_transforms = {
     'test':
     transforms.Compose([
         transforms.Grayscale(num_output_channels=1),
-        transforms.Resize(size=(256, 256), interpolation=3),  # 图像尺寸变化
+        # transforms.Resize(size=(256, 256), interpolation=3),  # 图像尺寸变化
+        transforms.Resize(size=(224, 224), interpolation=3),  # 图像尺寸变化
         # transforms.Resize(size=(224, 224)),
         transforms.CenterCrop(size=224),  # 将给定的PIL.Image进行中心裁剪，得到给定的size，切出来的图片的形状是正方形
         # transforms.RandomCrop(size=224, padding=1, pad_if_needed=True),  # 依据给定的 size 随机裁剪
@@ -304,7 +315,8 @@ train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=
 # train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True, num_workers=workers, pin_memory=False)
 valid_loader = DataLoader(dataset=valid_dataset, batch_size=valid_size, shuffle=False, num_workers=workers, pin_memory=True)
 # valid_loader = DataLoader(dataset=valid_dataset, batch_size=valid_size, shuffle=True, num_workers=workers, pin_memory=False)
-test_loader = DataLoader(dataset=test_dataset, batch_size=1, shuffle=True, num_workers=workers, pin_memory=True)
+# test_loader = DataLoader(dataset=test_dataset, batch_size=1, shuffle=True, num_workers=workers, pin_memory=True)
+test_loader = DataLoader(dataset=test_dataset, batch_size=test_size, shuffle=False, num_workers=workers, pin_memory=True)
 # test_loader = DataLoader(dataset=test_dataset, batch_size=1, shuffle=False, num_workers=workers, pin_memory=False)
 show_loader = DataLoader(dataset=show_dataset, batch_size=show_size, shuffle=False, num_workers=workers, pin_memory=True)
 # show_loader = DataLoader(dataset=show_dataset, batch_size=show_size, shuffle=True, num_workers=workers, pin_memory=False)

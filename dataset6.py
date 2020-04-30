@@ -16,8 +16,8 @@ def default_loader(path):
     # gamma(float类型): 非零实数，公式中的γ 也是非零实数。gamma大于1使得阴影部分更暗，gamma小于1使得暗的区域亮些
     # gain(float): 常量乘数
     # return TF.adjust_gamma(Image.open(path).convert('L'), 1)
-    return Image.open(path).convert('L')  # black/white
-    # return Image.open(path).convert('RGB')
+    # return Image.open(path).convert('L')  # black/white
+    return Image.open(path).convert('RGB')
 
 
 # # 自定义一个数据读取接口
@@ -75,7 +75,8 @@ class ImageFolder(Dataset):
 # 通过torchvision.transforms.Compose将三个类结合在一起
 grayTransform = transforms.Compose([transforms.Grayscale(num_output_channels=1),
                                     transforms.RandomGrayscale(p=0.1),
-                                    transforms.Resize(256),
+                                    # transforms.Resize(256),
+                                    transforms.Resize(224),
                                     # 随机切成224x224 大小图片 统一图片格式
                                     transforms.CenterCrop(224),
                                     # transforms.RandomRotation(degrees=15),
@@ -103,7 +104,8 @@ doTransform = transforms.Compose([
     # transforms.Resize(size=(640, 640), interpolation=3),
     # transforms.Resize(size=(256, 256)),
     # transforms.Resize(256, interpolation=2),
-    transforms.Resize(256),
+    # transforms.Resize(256),
+    transforms.Resize(224),
     # transforms.Resize(256, interpolation=3),
     # transforms.CenterCrop(size=224),
     # transforms.CenterCrop(256),
@@ -128,7 +130,8 @@ doTransform = transforms.Compose([
 
 # Normalize the test set same as training set without augmentation
 testTransform = transforms.Compose([
-    transforms.Resize(256),
+    # transforms.Resize(256),
+    transforms.Resize(224),
     transforms.ToTensor(),
     # transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
     # transforms.Normalize((0.4914,), (0.2023,)),
@@ -146,7 +149,8 @@ image_transforms = {
         transforms.Grayscale(num_output_channels=1),  # Convert image to grayscale, 对数据进行降维操作，也就是RGB->GRAY
         # transforms.RandomResizedCrop(size=256, scale=(0.8, 1.0)),
         # 将输入的PIL图片转换成给定的尺寸的大小
-        transforms.Resize(size=(256, 256), interpolation=3),
+        # transforms.Resize(size=(256, 256), interpolation=3),
+        transforms.Resize(size=(224, 224), interpolation=3),
         # 做比例放縮
         transforms.CenterCrop(size=224),  # Image net standards, 从中心位置裁剪
         # transforms.FiveCrop(size=224),  # 对图片进行上下左右以及中心裁剪，获得 5 张图片，返回一个 4D-tensor
@@ -189,7 +193,8 @@ image_transforms = {
     'valid':
     transforms.Compose([
         transforms.Grayscale(num_output_channels=1),
-        transforms.Resize(size=(256, 256), interpolation=3),
+        # transforms.Resize(size=(256, 256), interpolation=3),
+        transforms.Resize(size=(224, 224), interpolation=3),
         # transforms.Resize(size=(224, 224)),
         transforms.CenterCrop(size=224),
         # transforms.RandomCrop(size=224, padding=1, pad_if_needed=True),  # 依据给定的 size 随机裁剪
@@ -212,7 +217,8 @@ image_transforms = {
     'test':
     transforms.Compose([
         transforms.Grayscale(num_output_channels=1),
-        transforms.Resize(size=(256, 256), interpolation=3),  # 图像尺寸变化
+        # transforms.Resize(size=(256, 256), interpolation=3),  # 图像尺寸变化
+        transforms.Resize(size=(224, 224), interpolation=3),  # 图像尺寸变化
         # transforms.Resize(size=(224, 224)),
         transforms.CenterCrop(size=224),  # 将给定的PIL.Image进行中心裁剪，得到给定的size，切出来的图片的形状是正方形
         # transforms.RandomCrop(size=224, padding=1, pad_if_needed=True),  # 依据给定的 size 随机裁剪

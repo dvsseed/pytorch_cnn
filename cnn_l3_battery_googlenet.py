@@ -1,32 +1,40 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function
 import torch
+import torch.nn as nn
 import torchvision.utils as vutils
-import math
 from torch.autograd import Variable
 from datetime import datetime
-
-if torch.cuda.is_available():  # 判断是否有CUDA支持
+if torch.cuda.is_available():
     # https://docs-cupy.chainer.org/en/stable/install.html#install-cupy
     import cupy as cp
 import os
-# os.environ['CUDA_VISIBLE_DEVICES'] = '0, 1'  # 指定程序运行在特定GPU卡上
+# os.environ['CUDA_VISIBLE_DEVICES'] = '0, 1'
 import GPUtil
 # import cv2
 # from logger import Logger
 from tensorboardX import SummaryWriter
-# from adabound import AdaBound
-import torch_optimizer as optim
+from adabound import AdaBound
 # from rectified_adam import RectifiedAdam  # Rectified ADAM
 # import pbs
 # from pytorch_monitor import init_experiment, monitor_module
 # import seaborn as sb
 # sb.set()
 from tensorboard_logger import configure, log_value
-from model1 import *  # 六層, Our Model
+
+# from model1 import *  # 六層, Our Model
+# from alexnet import *   # 八層, Alexnet
+# from resnet18 import ResNet18   # 十八層, Resnet
+# from vgg16 import VGGNet   # 十六層, VGG
+# from squeeenet import SqueezeNet   # 十層, SqueezeNet
+# from densenet0 import DenseNet   # 121層, DenseNet
+# from densenet import densenet121   # 121層, DenseNet
+# from densenet import densenet161   # 161層, DenseNet
+# from mnasnet import mnasnet1_0   # 53層, MNASNet
+from googlenet import googlenet   # 58層, GoogLeNet
 # from model6 import *  # 單層測試
 # from model7 import *
-from tools5 import *
+from tools2 import *
 
 configure("runs", flush_secs=5)
 # unloader = transforms.ToPILImage()
@@ -72,8 +80,8 @@ def train(doplot=False):
     Accuracy = np.arange(0)
     for epoch in range(num_epochs):
         # adjust_learning_rate(optimizer, epoch)
-        total = 0.
-        correct = 0
+        total = 0
+        # correct = 0
         model.train()
 
         # 遍历训练数据(images, labels)
@@ -106,18 +114,17 @@ def train(doplot=False):
             # output = model.forward(inputs)
             # Get outputs to calc loss
             # Forward propagation, Forward pass
-            outputs = model(inputs)  # scores
+            outputs = model(inputs)
 
             # 计算这损失
             # Calculate loss
-            # loss = criterion(outputs, labels).to(device)
             loss = loss_function(outputs, labels).to(device)
             nloss += loss
 
             # Backward and optimize
             # Set the parameter gradients to zero
             # clear gradients for this training step
-            optimizer.zero_grad()  # 手動清除當前batch梯度
+            optimizer.zero_grad()
             # 反向传播, Adam优化训练
             # backward pass, optimize
             # 计算反向传播
@@ -162,7 +169,7 @@ def train(doplot=False):
             # print("Predicted:", predicted[:batch_size])
 
             log_value('training_predicted', predicted[0], epoch)
-            log_value('training_loss', loss.item() / total, epoch)
+            log_value('training_loss', loss.item(), epoch)
 
             # Get inputs and outputs
             # print(predicted[0].dtype)
@@ -178,9 +185,8 @@ def train(doplot=False):
             # if (epoch + 1) % batch_size == 0:
             # get the disk result as a percentage
             d_c = diskusage()
-            print(
-                'Train Epoch: [{0:03}/{1:03}], Step [{2:02}/{3:02}], Loss: {4:.4f}, Accuracy: ({5:08.4f}%), Elapsed time: {6:06.4f} seconds, CPU: {7:02.2f}%, Memory: {8:02.2f}%, DiskIO: [{9:02.4f}%, {10:02.4f}%]'.format(
-                    epoch + 1, num_epochs, i + 1, total_step, loss.item() / total, accuracy,
+            print('Train Epoch: [{0:03}/{1:03}], Step [{2:02}/{3:02}], Loss: {4:.4f}, Accuracy: ({5:06.2f}%), Elapsed time: {6:06.4f} seconds, CPU: {7:02.2f}%, Memory: {8:02.2f}%, DiskIO: [{9:02.4f}%, {10:02.4f}%]'.format(
+                    epoch + 1, num_epochs, i + 1, total_step, loss.item(), accuracy,
                     time.time() - tStart, psutil.cpu_percent(), psutil.virtual_memory().percent, d_c[0], d_c[1]))
             # print('Train Epoch: [{0:03}/{1:03}], Step [{2:02}/{3:02}], Loss: {4:.4f}, Accuracy: ({5:06.2f} %), Elapsed time: {6:06.4f} seconds, CPU: {7:02.2f}%, Memory: {8:02.2f}%, Disk: {9:02.2f}%'.format(epoch + 1, num_epochs, i + 1, total_step, loss.item(), (correct / total) * 100., time.time() - tStart, psutil.cpu_percent(), psutil.virtual_memory().percent, psutil.disk_usage('/').percent))
 
@@ -199,19 +205,6 @@ def train(doplot=False):
             if accuracy == 100:
                 eq100 += 1
             sumay += 1
-
-            # 计算准确率、查准率（precision）、查全率（recall）
-            # data['label'] and data['prediction'] are groundtruth label and prediction
-            # for each image, respectively.
-            # accuracy = np.mean(data['label'] == data['prediction']) * 100
-            # Compute recision and recall for each class.
-            # for c in range(len(num_classes)):
-            #     tp = np.dot((data['label'] == c).astype(int),
-            #                 (data['prediction'] == c).astype(int))
-            #     tp_fp = np.sum(data['prediction'] == c)
-            #     tp_fn = np.sum(data['label'] == c)
-            #     precision = tp / tp_fp * 100
-            #     recall = tp / tp_fn * 100
 
             # 观察显存占用
             # print(torch.cuda.memory_allocated())
@@ -232,8 +225,7 @@ def train(doplot=False):
             #    print('Memory Usage[{}]: Allocated: {} GB, Cached: {} GB'.format(torch.cuda.get_device_name(0), round(
             #        torch.cuda.memory_allocated(0) / 1024 ** 3, 1), round(torch.cuda.memory_cached(0) / 1024 ** 3, 1)))
 
-            f.write(
-                'Train Epoch: [{0:03}/{1:03}], Step [{2:02}/{3:02}], Loss: {4:.4f}, Accuracy: ({5:08.4f}%), Elapsed time: {6:06.4f} seconds, CPU: {7:02.2f}%, Memory: {8:02.2f}%, DiskIO: [{9:02.4f}%, {10:02.4f}%]\n'.format(
+            f.write('Train Epoch: [{0:03}/{1:03}], Step [{2:02}/{3:02}], Loss: {4:.4f}, Accuracy: ({5:06.2f}%), Elapsed time: {6:06.4f} seconds, CPU: {7:02.2f}%, Memory: {8:02.2f}%, DiskIO: [{9:02.4f}%, {10:02.4f}%]\n'.format(
                     epoch + 1, num_epochs, i + 1, total_step, loss.item(), accuracy,
                     time.time() - tStart, psutil.cpu_percent(), psutil.virtual_memory().percent, d_c[0], d_c[1]))
 
@@ -251,15 +243,11 @@ def train(doplot=False):
         # if accuracy > 98:
         #    evaluate()
 
-    print(
-        'Training done, Elapsed time: {:.4f} seconds, Accuracy [>= 70:{:}], [>= 80:{:}], [>= 90:{:}], [= 100:{:}], [sum:{:}]'.format(
-            time.time() - TStart, more70, more80, more90, eq100, sumay))
+    print('Training done, Elapsed time: {:.4f} seconds, Accuracy [>= 70:{:}], [>= 80:{:}], [>= 90:{:}], [= 100:{:}], [sum:{:}]'.format(time.time() - TStart, more70, more80, more90, eq100, sumay))
     print("=" * 60)
     print('Training done, Elapsed time: {:.4f} seconds.'.format(time.time() - TStart))
     print("=" * 60)
-    f.write(
-        'Training done, Elapsed time: {:.4f} seconds, Accuracy [>= 70:{:}], [>= 80:{:}], [>= 90:{:}], [= 100:{:}], [sum:{:}]\n'.format(
-            time.time() - TStart, more70, more80, more90, eq100, sumay))
+    f.write('Training done, Elapsed time: {:.4f} seconds, Accuracy [>= 70:{:}], [>= 80:{:}], [>= 90:{:}], [= 100:{:}], [sum:{:}]\n'.format(time.time() - TStart, more70, more80, more90, eq100, sumay))
     f.write("=" * 60)
     f.write("\n")
     f.write('Training done, Elapsed time: {:.4f} seconds.\n'.format(time.time() - TStart))
@@ -315,7 +303,6 @@ def evaluate1():
             # test_loss += loss.data[0]
             test_loss += loss.item()
             _, predicted = torch.max(outputs.data, 1)
-
             # for t, p in zip(targets.data.cpu().view(-1), predicted.cpu().view(-1)):
             for t, p in zip(targets.cpu().view(-1), predicted.cpu().view(-1)):
                 confusion_matrix[t.long(), p.long()] += 1
@@ -421,7 +408,7 @@ def evaluate1():
     # plot_graph(vlabels.data.cpu().numpy(), vpredicted.data.cpu().numpy(), "validation.png", 100. * (vcorrect / vtotal))
 
     # Saving & Loading a General Checkpoint for Inference and/or Resuming Training
-    torch.save(model, 'cnn.pth')
+    torch.save(model, 'cnn_googlenet.pth')
 
 
 def evaluate():
@@ -443,7 +430,6 @@ def evaluate():
             # voutputs = model.forward(vinputs)
             voutputs = model(vinputs)
             # vloss += F.nll_loss(output, labels).item()
-            # vloss += criterion(voutputs, vlabels).to(device)
             loss = loss_function(voutputs, vlabels).to(device)
             vloss += loss.item()
             # vloss.backward()  # loss 實施 backpropagation
@@ -471,14 +457,12 @@ def evaluate():
         # vloss = vloss
         vloss /= vtotal
         d_c = diskusage()
-        print(
-            'Validate set: Average Loss: {0:.4f}, Accuracy: [{1:02}/{2:02}] ({3:08.4f}%), Elapsed time: {4:06.4f} seconds, CPU: {5:02.2f}%, Memory: {6:02.2f}%, DiskIO: [{7:02.4f}%, {8:02.4f}%]'.format(
-                vloss, vcorrect, vtotal, 100. * (vcorrect / vtotal), time.time() - eStart, psutil.cpu_percent(),
-                psutil.virtual_memory().percent, d_c[0], d_c[1]))
+        print('Validate set: Average Loss: {0:.4f}, Accuracy: [{1:02}/{2:02}] ({3:06.2f}%), Elapsed time: {4:06.4f} seconds, CPU: {5:02.2f}%, Memory: {6:02.2f}%, DiskIO: [{7:02.4f}%, {8:02.4f}%]'.format(
+              vloss, vcorrect, vtotal, 100. * (vcorrect / vtotal), time.time() - eStart, psutil.cpu_percent(),
+              psutil.virtual_memory().percent, d_c[0], d_c[1]))
         f.write("=" * 60)
         f.write('\n')
-        f.write(
-            'Validate set: Average Loss: {0:.4f}, Accuracy: [{1:02}/{2:02}] ({3:08.4f}%), Elapsed time: {4:06.4f} seconds, CPU: {5:02.2f}%, Memory: {6:02.2f}%, DiskIO: [{7:02.4f}%, {8:02.4f}%]\n'.format(
+        f.write('Validate set: Average Loss: {0:.4f}, Accuracy: [{1:02}/{2:02}] ({3:06.2f}%), Elapsed time: {4:06.4f} seconds, CPU: {5:02.2f}%, Memory: {6:02.2f}%, DiskIO: [{7:02.4f}%, {8:02.4f}%]\n'.format(
                 vloss, vcorrect, vtotal, 100. * (vcorrect / vtotal), time.time() - eStart, psutil.cpu_percent(),
                 psutil.virtual_memory().percent, d_c[0], d_c[1]))
 
@@ -501,7 +485,7 @@ def evaluate():
 
     # Saving & Loading a General Checkpoint for Inference and/or Resuming Training
     # Save
-    if (100. * (vcorrect / vtotal)) > 10:
+    if (100. * (vcorrect / vtotal)) > 10:  # 99:
         # torch.save({
         #     'epoch': num_epochs,
         #     'model_state_dict': model.state_dict(),
@@ -510,11 +494,11 @@ def evaluate():
         #     'correct': vcorrect,
         #     'total': vtotal
         # }, 'evaluate.pth')
-        torch.save(model, 'cnn.pth')
+        torch.save(model, 'cnn_googlenet.pth')
         # if torch.cuda.is_available():
-        #    torch.save(model.module.state_dict(), 'cnn_model.pth')
+        #    torch.save(model.module.state_dict(), 'cnn_model_googlenet.pth')
         # else:
-        #    torch.save(model.state_dict(), 'cnn_model.pth')
+        #    torch.save(model.state_dict(), 'cnn_model_googlenet.pth')
         # if accuracy more then 98 do test()
         # if (100. * (vcorrect / vtotal)) > 99:
         # test()
@@ -529,13 +513,12 @@ def test(doplot=False):
     # device = torch.device('cpu')
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     # if torch.cuda.is_available():
-    #    model = ConvNet(num_classes)
-    #    model.load_state_dict(torch.load('cnn_model.pth', map_location=device), strict=False)
+        # model = ConvNet(num_classes)  # Our Model
+    #    model = AlexNet(num_classes)
+    #    model.load_state_dict(torch.load('cnn_model_alexnet.pth', map_location=device))
     # else:
-    model = torch.load('cnn.pth')  # , map_location='cpu')  # cnn_model.pth, evaluate.pth
+    model = torch.load('cnn_googlenet.pth')  # , map_location='cpu')  # cnn_model.pth, evaluate.pth
     model = model.to(device)
-    # 将在GPU保存的模型加载到CPU
-    # model.load_state_dict(torch.load('cnn.pth', map_location='cpu'))
     # optimizer = TheOptimizerClass(*args, **kwargs)
     # checkpoint = torch.load('evaluate.pth')
     # model.load_state_dict(checkpoint['model_state_dict'])
@@ -568,7 +551,6 @@ def test(doplot=False):
             # optimizer.zero_grad()
             # toutputs = model.forward(tinputs)
             toutputs = model(tinputs)
-            # tloss += criterion(toutputs, tlabels).to(device)
             loss = loss_function(toutputs, tlabels).to(device)
             tloss += loss.item()
             nloss = tloss
@@ -588,20 +570,16 @@ def test(doplot=False):
             log_value('testing_accuracy', taccuracy)  # , j)
 
             # testing the images
-            ftest.write('index: {0:4}, label: {1:1}, predict: {2:1}, accuracy: {3:06.2f}%\n'.format(i + 1, tlabels[0],
-                                                                                                    tpredicted[0],
-                                                                                                    taccuracy))
+            ftest.write('index: {0:4}, label: {1:1}, predict: {2:1}, accuracy: {3:06.2f}%\n'.format(i + 1, tlabels[0], tpredicted[0], taccuracy))
 
         # print("Actual:", tlbls[:test_size], ">> Predicted:", tpreds[:test_size])
 
         tloss /= ttotal
         d_c = diskusage()
-        print(
-            'Test set: Average Loss: {0:.4f}, Accuracy: [{1:02}/{2:02}] ({3:08.4f}%), Elapsed time: {4:06.4f} seconds, CPU: {5:02.2f}%, Memory: {6:02.2f}%, DiskIO: [{7:02.4f}%, {8:02.4f}%]'.format(
-                tloss, tcorrect, ttotal, taccuracy, time.time() - tStart, psutil.cpu_percent(),
-                psutil.virtual_memory().percent, d_c[0], d_c[1]))
-        f.write(
-            'Test set: Average Loss: {0:.4f}, Accuracy: [{1:02}/{2:02}] ({3:08.4f}%), Elapsed time: {4:06.4f} seconds, CPU: {5:02.2f}%, Memory: {6:02.2f}%, DiskIO: [{7:02.4f}%, {8:02.4f}%]\n'.format(
+        print('Test set: Average Loss: {0:.4f}, Accuracy: [{1:02}/{2:02}] ({3:06.2f}%), Elapsed time: {4:06.4f} seconds, CPU: {5:02.2f}%, Memory: {6:02.2f}%, DiskIO: [{7:02.4f}%, {8:02.4f}%]'.format(
+              tloss, tcorrect, ttotal, taccuracy, time.time() - tStart, psutil.cpu_percent(),
+              psutil.virtual_memory().percent, d_c[0], d_c[1]))
+        f.write('Test set: Average Loss: {0:.4f}, Accuracy: [{1:02}/{2:02}] ({3:06.2f}%), Elapsed time: {4:06.4f} seconds, CPU: {5:02.2f}%, Memory: {6:02.2f}%, DiskIO: [{7:02.4f}%, {8:02.4f}%]\n'.format(
                 tloss, tcorrect, ttotal, taccuracy, time.time() - tStart, psutil.cpu_percent(),
                 psutil.virtual_memory().percent, d_c[0], d_c[1]))
 
@@ -633,10 +611,10 @@ if __name__ == '__main__':
     fromtime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 
     # logger = Logger('./logs')
-    writer = SummaryWriter(logdir='./logs/', comment='CNN-6Layer-Ourmodel')
+    writer = SummaryWriter(logdir='./logs/', comment='CNN-58Layer-GoogLeNet')
 
-    f = open('logs.txt', 'w')
-    ftest = open('tests.txt', 'w')
+    f = open('logs_googlenet.txt', 'w')
+    ftest = open('tests_googlenet.txt', 'w')
 
     # to show GPU
     # if not nocuda:
@@ -714,7 +692,7 @@ if __name__ == '__main__':
     # 显存和GPU占用不会被自动释放, 手動清空
     if not nocuda:
         if torch.cuda.is_available():
-            torch.cuda.empty_cache()  # 有时Control-C中止运行后GPU存储没有及时释放，需要手动清空
+            torch.cuda.empty_cache()
 
     # the 4 possible labels for each image
     # classes = ('bottom_NG', 'bottom_OK', 'top_NG', 'top_OK')
@@ -737,19 +715,16 @@ if __name__ == '__main__':
     # # 多GPU训练通过torch.nn.DataParallel接口实现
     # 如：model = torch.nn.DataParallel(model, device_ids=[0,1])表示在gpu0和1上训练模型，加快训练速度
     # 可利用指令 $ watch -n 0.1 nvidia-smi 查詢GPUs使用情況
-    model = ConvNet(num_classes)
+    # model = ConvNet(num_classes)  # Our Model
+    # model = AlexNet(num_classes)  # Alexnet
+    # model = DenseNet()  # DenseNet
+    model = googlenet()  # GoogLeNet
     model = model.to(device)
     if torch.cuda.device_count() > 1:
         print("Let's use ", torch.cuda.device_count(), " GPUs")
         model = nn.DataParallel(model, device_ids=range(torch.cuda.device_count()))
         torch.backends.cudnn.benchmark = True  # Benchmark模式会提升cuDNN计算速度，但是由于计算中有随机性，每次网络前馈结果略有差异
         torch.backends.cudnn.deterministic = True  # 避免上述的结果波动
-
-    print("PyTorch version:", torch.__version__)  # PyTorch version
-    print("CUDA version:", torch.version.cuda)  # Corresponding CUDA version
-    print("cuDNN version:", torch.backends.cudnn.version())  # Corresponding cuDNN version
-    print("GPU type:", torch.cuda.get_device_name(0))  # GPU type
-    print("=" * 60)
 
     print(model)
     print("=" * 60)
@@ -759,7 +734,6 @@ if __name__ == '__main__':
     print("+" * 60)
     print("模型總層數 = %s: [Convolutional卷積層數 = %s, Fully connected全連接層數 = %s => 共 %s layers]" % count_model_layers(model))
     print("+" * 60)
-    # sys.exit(0)
 
     # Enable monitoring
     # monitor_module(model, writer,
@@ -774,7 +748,6 @@ if __name__ == '__main__':
     # CrossEntropyLoss()接口表示交叉熵
     # 该函数包含了 SoftMax activation 和 cross entorpy，所以在神经网络结构定义的时候不需要定义softmax activation
     loss_function = nn.CrossEntropyLoss()
-    # criterion = nn.CrossEntropyLoss()
     # # 优化函数通过torch.optim包实现
     # Adam: A Method for Stochastic Optimization (https://arxiv.org/abs/1412.6980)
     # optimizer = optim.Adam([var1, var2], lr = 0.0001)
@@ -788,17 +761,7 @@ if __name__ == '__main__':
     # optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-8)  # 2
     # use AdaBound PyTorch optimizers
     # AdaBound(model_params, 0.1, betas=(0.9, 0.999), final_lr=0.1, gamma=1e-3, weight_decay=5e-4, amsbound=True)
-    # optimizer = AdaBound(model.parameters(), lr=learning_rate, final_lr=0.1)  # 3
-    optimizer = optim.AdaBound(
-        model.parameters(),
-        lr=learning_rate,  # 1e-3
-        betas=(0.9, 0.999),
-        final_lr=0.1,
-        gamma=1e-3,
-        eps=1e-8,
-        weight_decay=0,
-        amsbound=False,
-    )
+    optimizer = AdaBound(model.parameters(), lr=learning_rate, final_lr=0.1)  # 3
 
     # 每过10个epoch训练，学习率就乘gamma
     # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.9)
@@ -811,10 +774,7 @@ if __name__ == '__main__':
     # patience：幾個epoch不變時，才改變學習速率，默認爲10
     # verbose：是否打印出信息
     pat = round(num_epochs / 10)
-    # Reduce learning rate when validation accuarcy plateau.
-    # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', patience=5, verbose=True)
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.9, patience=pat,
-                                                           verbose=False)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.9, patience=pat, verbose=False)
 
     # Rectified ADAM
     # optimizer = RectifiedAdam(lr=learning_rate)
@@ -830,14 +790,14 @@ if __name__ == '__main__':
     test()
 
     # Save the model checkpoint, 儲存模型
-    if os.path.isfile('cnn.pth'):
-        torch.save(model, 'cnn1.pth')
+    if os.path.isfile('cnn_googlenet.pth'):
+        torch.save(model, 'cnn1_googlenet.pth')
     else:
-        torch.save(model, 'cnn.pth')
-    if os.path.isfile('cnn_model.pth'):
-        torch.save(model.state_dict(), 'cnn_model1.pth')  # 保存
+        torch.save(model, 'cnn_googlenet.pth')
+    if os.path.isfile('cnn_model_googlenet.pth'):
+        torch.save(model.state_dict(), 'cnn_model1_googlenet.pth')  # 保存
     else:
-        torch.save(model.state_dict(), 'cnn_model.pth')
+        torch.save(model.state_dict(), 'cnn_model_googlenet.pth')
 
     pid = os.getpid()
     py = psutil.Process(pid)
@@ -870,12 +830,13 @@ if __name__ == '__main__':
     f.write("Elapsed time==" + str(hours) + " hours==" + str(minutes) + " minutes==" + str(seconds) + " seconds")
     f.write('\n')
 
+
     # 手動關閉文件
     f.close()
     ftest.close()
 
     # export scalar data to JSON for external processing
-    writer.export_scalars_to_json('./all_scalars.json')
+    writer.export_scalars_to_json('./all_scalars_googlenet.json')
     writer.close()
     # 執行 D:\pytorch_code>tensorboard --logdir logs
     # 瀏覽 http://localhost:6006 (Press CTRL+C to quit)

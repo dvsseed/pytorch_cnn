@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+# import torch.nn.functional as F
 from utils import load_state_dict_from_url
 
 
@@ -143,8 +144,8 @@ class ResNet(nn.Module):
                              "or a 3-element tuple, got {}".format(replace_stride_with_dilation))
         self.groups = groups
         self.base_width = width_per_group
-        # self.conv1 = nn.Conv2d(3, self.inplanes, kernel_size=7, stride=2, padding=3,
-        self.conv1 = nn.Conv2d(1, self.inplanes, kernel_size=7, stride=2, padding=3,
+        # self.conv1 = nn.Conv2d(1, self.inplanes, kernel_size=7, stride=2, padding=3,
+        self.conv1 = nn.Conv2d(3, self.inplanes, kernel_size=7, stride=2, padding=3,
                                bias=False)
         self.bn1 = norm_layer(self.inplanes)
         self.relu = nn.ReLU(inplace=True)
@@ -217,6 +218,7 @@ class ResNet(nn.Module):
         x = self.fc(x)
 
         return x
+        # return F.log_softmax(x, dim=1)  # 輸出用 softmax 處理
 
     def forward(self, x):
         return self._forward_impl(x)

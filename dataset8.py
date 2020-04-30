@@ -1,3 +1,13 @@
+# -*- coding: utf-8 -*-
+# # # ref. https://github.com/fchollet/deep-learning-models/blob/master/inception_v3.py
+"""Inception V3 model for Keras.
+Note that the input image format for this model is different than for
+the VGG16 and ResNet models (299x299 instead of 224x224),
+and that the input preprocessing function is also different (same as Xception).
+# Reference
+- [Rethinking the Inception Architecture for Computer Vision](http://arxiv.org/abs/1512.00567)
+"""
+
 from __future__ import print_function
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
@@ -5,8 +15,8 @@ from torchvision import transforms
 import torchvision.transforms.functional as TF
 from PIL import Image
 # import random
-# from argparses2 import *
-from argparses3 import *
+
+from argparses2 import *
 
 
 def default_loader(path):
@@ -75,10 +85,12 @@ class ImageFolder(Dataset):
 # 通过torchvision.transforms.Compose将三个类结合在一起
 grayTransform = transforms.Compose([transforms.Grayscale(num_output_channels=1),
                                     transforms.RandomGrayscale(p=0.1),
-                                    transforms.Resize(256),
-                                    # transforms.Resize(224),
+                                    # transforms.Resize(256),
+                                    transforms.Resize(299),
                                     # 随机切成224x224 大小图片 统一图片格式
-                                    transforms.CenterCrop(224),
+                                    # transforms.CenterCrop(224),
+                                    # 随机切成299x299 大小图片 统一图片格式
+                                    transforms.CenterCrop(299),
                                     # transforms.RandomRotation(degrees=15),
                                     # 随机改变图像的亮度对比度和饱和度
                                     transforms.ColorJitter(),
@@ -104,12 +116,12 @@ doTransform = transforms.Compose([
     # transforms.Resize(size=(640, 640), interpolation=3),
     # transforms.Resize(size=(256, 256)),
     # transforms.Resize(256, interpolation=2),
-    transforms.Resize(256),
-    # transforms.Resize(224),
+    # transforms.Resize(256),
+    transforms.Resize(299),
     # transforms.Resize(256, interpolation=3),
     # transforms.CenterCrop(size=224),
     # transforms.CenterCrop(256),
-    transforms.CenterCrop(224),
+    transforms.CenterCrop(299),
     # transforms.CenterCrop(size=(512, 512)),
     # transforms.RandomCrop(256, padding=4),
     # transforms.RandomCrop(256),
@@ -132,12 +144,12 @@ doTransform = transforms.Compose([
 
 # Normalize the test set same as training set without augmentation
 testTransform = transforms.Compose([
-    transforms.Resize(256),
-    # transforms.Resize(224),
-    transforms.CenterCrop(224),
+    # transforms.Resize(256),
+    transforms.Resize(299),
+    transforms.CenterCrop(299),
     transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                         std=[0.229, 0.224, 0.225]),
+    transforms.Normalize(mean=(0.485, 0.456, 0.406),
+                         std=(0.229, 0.224, 0.225)),
     # transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
     # transforms.Normalize((0.4914,), (0.2023,)),
 ])
@@ -155,9 +167,10 @@ image_transforms = {
         # transforms.RandomResizedCrop(size=256, scale=(0.8, 1.0)),
         # 将输入的PIL图片转换成给定的尺寸的大小
         # transforms.Resize(size=(256, 256), interpolation=3),
-        transforms.Resize(size=(224, 224), interpolation=3),
+        transforms.Resize(size=(299, 299), interpolation=3),
         # 做比例放縮
-        transforms.CenterCrop(size=224),  # Image net standards, 从中心位置裁剪
+        # transforms.CenterCrop(size=224),  # Image net standards, 从中心位置裁剪
+        transforms.CenterCrop(size=299),
         # transforms.FiveCrop(size=224),  # 对图片进行上下左右以及中心裁剪，获得 5 张图片，返回一个 4D-tensor
         # transforms.TenCrop(size=224, vertical_flip=False),  # 对图片进行上下左右以及中心裁剪，然后全部翻转（水平或者垂直），获得 10 张图片，返回一个 4D-tensor
         # transforms.RandomCrop(size=224, padding=1, pad_if_needed=True),  # 依据给定的 size 随机裁剪
@@ -199,9 +212,10 @@ image_transforms = {
     transforms.Compose([
         transforms.Grayscale(num_output_channels=1),
         # transforms.Resize(size=(256, 256), interpolation=3),
-        transforms.Resize(size=(224, 224), interpolation=3),
+        transforms.Resize(size=(299, 299), interpolation=3),
         # transforms.Resize(size=(224, 224)),
-        transforms.CenterCrop(size=224),
+        # transforms.CenterCrop(size=224),
+        transforms.CenterCrop(size=299),
         # transforms.RandomCrop(size=224, padding=1, pad_if_needed=True),  # 依据给定的 size 随机裁剪
         # transforms.RandomHorizontalFlip(),
         transforms.RandomHorizontalFlip(p=0.5),  # 随机水平翻转给定的PIL.Image,概率p为0.5。即：一半的概率翻转，一半的概率不翻转
@@ -223,9 +237,10 @@ image_transforms = {
     transforms.Compose([
         transforms.Grayscale(num_output_channels=1),
         # transforms.Resize(size=(256, 256), interpolation=3),  # 图像尺寸变化
-        transforms.Resize(size=(224, 224), interpolation=3),  # 图像尺寸变化
+        transforms.Resize(size=(299, 299), interpolation=3),
         # transforms.Resize(size=(224, 224)),
-        transforms.CenterCrop(size=224),  # 将给定的PIL.Image进行中心裁剪，得到给定的size，切出来的图片的形状是正方形
+        # transforms.CenterCrop(size=224),  # 将给定的PIL.Image进行中心裁剪，得到给定的size，切出来的图片的形状是正方形
+        transforms.CenterCrop(size=299),
         # transforms.RandomCrop(size=224, padding=1, pad_if_needed=True),  # 依据给定的 size 随机裁剪
         # transforms.RandomHorizontalFlip(),
         transforms.RandomHorizontalFlip(p=0.5),  # 随机水平翻转给定的PIL.Image,概率p为0.5。即：一半的概率翻转，一半的概率不翻转

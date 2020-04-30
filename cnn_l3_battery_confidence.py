@@ -17,6 +17,7 @@ import GPUtil
 from tensorboardX import SummaryWriter
 # from adabound import AdaBound
 import torch_optimizer as optim
+import torchnet.meter as meter
 # from rectified_adam import RectifiedAdam  # Rectified ADAM
 # import pbs
 # from pytorch_monitor import init_experiment, monitor_module
@@ -135,6 +136,7 @@ def train(doplot=False):
             # Total number of labels
             if total == 0:
                 total = labels.size(0)
+
             # torch.max(x,1) 按行取最大值
             # output每一行的最大值存在_中，每一行最大值的索引存在predicted中
             # output的每一行的每个元素的值表示是这一类的概率，取最大概率所对应的类作为分类结果
@@ -142,8 +144,15 @@ def train(doplot=False):
             # Obtaining predictions from max value
             _, predicted = torch.max(outputs.data, 1)
             # .sum()计算出predicted和labels相同的元素有多少个，返回的是一个张量，.item()得到这个张量的数值(int型)
+
+            # percentage = torch.nn.functional.softmax(outputs, dim=1)[0]  # confidence
+            # print(predicted[0], percentage[predicted[0]].item())
+            # _, indices = torch.sort(outputs, descending=True)
+            # print([(labels[idx], percentage[idx].item()) for idx in indices[0][:9]])
+
             # Calculate the number of correct answers
-            correct = (predicted == labels).sum().item()
+            # correct = (predicted == labels).sum().item()
+            correct = predicted.eq(labels).sum().item()
             # print(type(labels.data.cpu().numpy()))
 
             # preds = np.squeeze(predicted.numpy())
@@ -297,9 +306,16 @@ def evaluate1():
         test_loss = 0
         correct = 0
         total = 0
+        # mAP = 0
+        # tmAP = 0
+        # amAP = 0
+        # o_confidence = 0  # correct label
+        # x_confidence = 0  # wrong label
+        # s_confidence = 0  # 不計較對或錯
         max_confidence = 0.
         avg_confidence = 0.
         std_confidence = 0.
+        # aconfidence = 0
         target_num = torch.zeros((1, classnum))
         predict_num = torch.zeros((1, classnum))
         acc_num = torch.zeros((1, classnum))
@@ -315,13 +331,69 @@ def evaluate1():
             # test_loss += loss.data[0]
             test_loss += loss.item()
             _, predicted = torch.max(outputs.data, 1)
-
             # for t, p in zip(targets.data.cpu().view(-1), predicted.cpu().view(-1)):
             for t, p in zip(targets.cpu().view(-1), predicted.cpu().view(-1)):
                 confusion_matrix[t.long(), p.long()] += 1
 
             total += targets.size(0)
             correct += predicted.eq(targets).cpu().sum()
+
+            # print(outputs.data)
+            # print(predicted.data)
+            # print(targets.data)
+
+            # 計算 mAP=mean average precision
+            # mtr = meter.mAPMeter()
+            # print(model.layer1[0])
+            # print(model.layer1[0].weight)
+            # print(model.layer1[0].weight.data)  # norm of the weight
+            # print(model.layer1[0].weight.data.norm())  # norm of the weight
+            # print(model.layer1[0].weight.grad.size())  # to access individual layer weights and gradients
+            # print(model.layer1[0].weight.grad.data.norm())  # norm of the gradients
+            # weight = torch.sum(model.layer1[0].weight.data.cpu())  # 有三個layers
+            # weight = model.layer1[0].weight.data  # 有三個layers
+            # print(outputs.size())
+            # print(targets.size())
+            # print(weight.size())
+            # mtr.add(outputs, targets, weight=None)
+            # mAP = mtr.value()
+
+            # confidence score
+            # confidence_percentage = torch.nn.functional.softmax(outputs, dim=1)[0] * 100
+            # confidence_percentage = torch.nn.functional.softmax(outputs, dim=1)[0]
+
+            # print('outputs shape:', outputs.shape)  # torch.Size([200, 4])
+            # print('outputs\' transpose shape:', outputs.t().shape)  # torch.Size([200, 4])
+            # print('labels shape:', targets.shape)  # torch.Size([200])
+            # print('softmax shape:', torch.nn.functional.softmax(outputs, dim=1)[0].shape)  # torch.Size([4])
+            # print('softmax shape:', torch.nn.functional.softmax(outputs.t(), dim=1)[0].shape)  # torch.Size([200])
+            # print('outputs\' transpose softmax data:', torch.nn.functional.softmax(outputs.t(), dim=1)[0])  # 200
+            # print('outputs\' transpose softmax data:', torch.nn.functional.softmax(outputs.t(), dim=1)[0].sum())  # tensor(1.0000, device='cuda:0')
+            # print('softmax shape:', torch.nn.functional.softmax(outputs.t(), dim=0)[0].shape)  # torch.Size([4])
+            # print('predict shape:', confidence_percentage)  # tensor([7.0963e-01, 2.8993e-01, 7.4449e-06, 4.3293e-04], device='cuda:0')
+
+            # confidence = torch.nn.functional.softmax(outputs.t(), dim=1)[0]
+            # 計算小計 confidence score, 當 預測predicted == targets label答案時
+            # o_items = 1
+            # x_items = 1
+            # for idx, (t, p) in enumerate(zip(targets.cpu().view(-1), predicted.cpu().view(-1))):
+                # if t.long() == p.long():
+                #     # print(t, p, idx)
+                #     o_confidence += confidence[idx].item()  # correct label[index] to sum
+                #     o_items += 1
+                # else:
+                #     x_confidence += confidence[idx].item()  # wrong label[index] to sum
+                #     x_items += 1
+                # 不計較 預測是否 對或錯
+                # s_confidence += confidence[idx].item()  # label[index] to sum
+
+            # print('sum of confidence score', confidence.cpu().sum())
+            # print('correct confidence score:', o_confidence, 'wrong confidence score:', x_confidence)
+            # print('confidence score:', o_confidence / o_items, 'average wrong confidence score:', x_confidence / x_items)
+            # print('average correct confidence score:', o_confidence / total, 'average wrong confidence score:', x_confidence / total)
+            # print('confidence score:', s_confidence)
+            # print('mean of confidence score:', confidence.mean())
+            # print('standard deviation of confidence score:', confidence.std())
 
             # 計算confidence score, 相似度取四個分類classes中最大值max再加總後取平均mean, 外加取標準差std
             max_list = []
@@ -334,8 +406,34 @@ def evaluate1():
                 max_list.append(cnmax)  # append to lists
                 max_confidence += cnmax  # 將所有的最大值加總
 
+            # print(max_list)
+            # confmean = max_confidence.mean()  # 取均值
+            # confstd = max_confidence.std()  # 取方差
+            # print(max_confidence)
+            # print(np.sum(max_list))  # 數值同上
             avg_confidence = (max_confidence / total).round(6)
+            # print('Average of Confidence Score:', avg_confidence)
+            # print('Mean of Confidence Score:', np.mean(max_list))  # 數值同上 mean=average
+            # print('Mean of Confidence Score:', confmean)
+            # print('Standard Deviation of Confidence Score:', confstd)
+            # print('Mean of Confidence Score:', torch.mean(max_list))
+            # print('Mean of Confidence Score:', torch.mean(tmax))
+            # print('Standard Deviation of Confidence Score:', tmax.std())
+            # print('Standard Deviation of Confidence Score:', torch.std(max_list, unbiased=False))
             std_confidence = (np.std(max_list, ddof=1)).round(6)
+            # print('Standard Deviation of Confidence Score:', std_confidence)  # 大樣本使用無偏樣本標準差ddof=1
+            # print('Standard Deviation of Confidence Score:', torch.std(max_confidence, unbiased=False))
+            # sys.exit(0)
+
+            # print the top 5 classes predicted by the model
+            # print(outputs.shape)
+            # print(outputs.data)
+            # print(confidence_percentage.shape)
+            # _, indices = torch.sort(outputs, descending=True)
+            # [print('confidencd:', idx.item(), classes[idx], confidence_percentage[idx].item()) for idx in indices[0][:10]]
+            # print(indices.shape)
+            # [print('confidencd:', idx.item(), confidence_percentage[idx].item()) for idx in indices[0][:5]]
+            # [print('confidencd:', idx.item(), confidence_percentage[idx].item()) for idx in indices[199][:5]]
 
             pre_mask = torch.zeros(outputs.size()).scatter_(1, predicted.cpu().view(-1, 1), 1.)
             predict_num += pre_mask.sum(0)
@@ -343,6 +441,8 @@ def evaluate1():
             target_num += tar_mask.sum(0)
             acc_mask = pre_mask * tar_mask
             acc_num += acc_mask.sum(0)
+            # tmAP += mAP
+            # tconfidence = confidence_percentage.cpu().sum()
 
         print('Average of Confidence Score:', avg_confidence)  # confidence取最大再平均
         print('Standard Deviation of Confidence Score:', std_confidence)  # 大樣本(>30)使用無偏樣本標準差ddof=1
@@ -355,6 +455,8 @@ def evaluate1():
         GMean = np.sqrt(recall * precision)
         accuracy = acc_num.sum(1) / target_num.sum(1)
         tloss = test_loss / total
+        # amAP = tmAP / total
+        # aconfidence = tconfidence / total
 
         # 精度调整
         recall = (recall.numpy()[0] * 100).round(6)
@@ -363,6 +465,7 @@ def evaluate1():
         GMean = (GMean.numpy()[0] * 100).round(6)
         accuracy = (accuracy.numpy()[0] * 100).round(6)
         tloss *= 100
+        # aconfidence *= 100
 
         # 打印格式方便复制
         print('Recall:', " ".join('%s%%' % id for id in recall))
@@ -371,6 +474,11 @@ def evaluate1():
         print('F1 Score:', " ".join('%s%%' % id for id in F1))
         print('G-Mean:', " ".join('%s%%' % id for id in GMean))
         print('Loss: {}'.format(tloss))
+        # print('mAP: {}'.format(tmAP))
+        # print('mAP/total: {}'.format(amAP))
+        # print('Confidence: {}'.format(tconfidence))
+        # print('Confidence/total: {}'.format(aconfidence))
+        # print(total)
         print("-" * 60)
 
         f.write('Recall: ')
@@ -774,6 +882,7 @@ if __name__ == '__main__':
     # CrossEntropyLoss()接口表示交叉熵
     # 该函数包含了 SoftMax activation 和 cross entorpy，所以在神经网络结构定义的时候不需要定义softmax activation
     loss_function = nn.CrossEntropyLoss()
+    # loss_function = F.cross_entropy()
     # criterion = nn.CrossEntropyLoss()
     # # 优化函数通过torch.optim包实现
     # Adam: A Method for Stochastic Optimization (https://arxiv.org/abs/1412.6980)

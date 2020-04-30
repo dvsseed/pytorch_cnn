@@ -5,8 +5,8 @@ from torchvision import transforms
 import torchvision.transforms.functional as TF
 from PIL import Image
 # import random
-# from argparses2 import *
-from argparses3 import *
+
+from argparses1 import *
 
 
 def default_loader(path):
@@ -75,8 +75,8 @@ class ImageFolder(Dataset):
 # 通过torchvision.transforms.Compose将三个类结合在一起
 grayTransform = transforms.Compose([transforms.Grayscale(num_output_channels=1),
                                     transforms.RandomGrayscale(p=0.1),
-                                    transforms.Resize(256),
-                                    # transforms.Resize(224),
+                                    # transforms.Resize(256),
+                                    transforms.Resize(224),
                                     # 随机切成224x224 大小图片 统一图片格式
                                     transforms.CenterCrop(224),
                                     # transforms.RandomRotation(degrees=15),
@@ -96,6 +96,7 @@ grayTransform = transforms.Compose([transforms.Grayscale(num_output_channels=1),
                                     ])
 
 # 定义训练集的转换，随机翻转图像，剪裁图像，应用平均和标准正常化方法
+# 常用训练和验证数据预处理
 doTransform = transforms.Compose([
     # transforms.Grayscale(num_output_channels=1),
     # transforms.Grayscale(num_output_channels=3),
@@ -113,16 +114,18 @@ doTransform = transforms.Compose([
     # transforms.CenterCrop(size=(512, 512)),
     # transforms.RandomCrop(256, padding=4),
     # transforms.RandomCrop(256),
+    # transforms.RandomResizedCrop(size=224, scale=(0.08, 1.0)),
     transforms.ColorJitter(),
     transforms.RandomHorizontalFlip(),
     # transforms.RandomHorizontalFlip(p=0.5),
     # ToTensor 将图像转换为 PyTorch 能够使用的格式
+    # 将PIL.Image或形状为H×W×D，数值范围为[0, 255]的np.ndarray转换为形状为D×H×W，数值范围为[0.0, 1.0]的torch.Tensor
     transforms.ToTensor(),
     # Normalize 会让所有像素范围处于-1到+1之间
     # transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
     # transforms.Normalize((0.4914,), (0.2023,)),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                         std=[0.229, 0.224, 0.225]),
+    transforms.Normalize(mean=(0.485, 0.456, 0.406),
+                         std=(0.229, 0.224, 0.225)),
     # transforms.Normalize(mean=(0.485,), std=(0.229,))
     # transforms.Normalize(mean=(0.456,), std=(0.224,))
     # transforms.Normalize(mean=(0.406,), std=(0.225,))
@@ -136,9 +139,8 @@ testTransform = transforms.Compose([
     # transforms.Resize(224),
     transforms.CenterCrop(224),
     transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                         std=[0.229, 0.224, 0.225]),
-    # transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+    transforms.Normalize(mean=(0.485, 0.456, 0.406),
+                         std=(0.229, 0.224, 0.225)),
     # transforms.Normalize((0.4914,), (0.2023,)),
 ])
 
@@ -315,7 +317,6 @@ train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=
 # train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True, num_workers=workers, pin_memory=False)
 valid_loader = DataLoader(dataset=valid_dataset, batch_size=valid_size, shuffle=False, num_workers=workers, pin_memory=True)
 # valid_loader = DataLoader(dataset=valid_dataset, batch_size=valid_size, shuffle=True, num_workers=workers, pin_memory=False)
-# test_loader = DataLoader(dataset=test_dataset, batch_size=1, shuffle=True, num_workers=workers, pin_memory=True)
 test_loader = DataLoader(dataset=test_dataset, batch_size=test_size, shuffle=False, num_workers=workers, pin_memory=True)
 # test_loader = DataLoader(dataset=test_dataset, batch_size=1, shuffle=False, num_workers=workers, pin_memory=False)
 show_loader = DataLoader(dataset=show_dataset, batch_size=show_size, shuffle=False, num_workers=workers, pin_memory=True)

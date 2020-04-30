@@ -13,29 +13,32 @@ class ConvNet(nn.Module):
         super(ConvNet, self).__init__()
         # Input channels = 1(gray) or 3(rgb), output channels = 32
         # 初始化卷积层
-        self.layer1 = nn.Sequential(  # input shape (1, 256, 256)
+        self.layer1 = nn.Sequential(  # input shape (3, 224, 224)
             nn.Conv2d(
-                in_channels=1,    # input height
+                # in_channels=1,    # input height
+                in_channels=3,    # input height
                 out_channels=4,   # n_filters
                 kernel_size=3,    # filter size
                 stride=1,         # filter movement/step
-                padding=1         # 如果想要 con2d 出来的图片长宽没有变化, padding=(kernel_size-1)/2 当 stride=1
-            ),  # output shape 16, 256, 256), padding=(kernel_size-1)/2 当 stride=1
+                padding=1,         # 如果想要 con2d 出来的图片长宽没有变化, padding=(kernel_size-1)/2 当 stride=1
+                bias=True
+            ),  # output shape 4, 256, 256), padding=(kernel_size-1)/2 当 stride=1
             nn.BatchNorm2d(num_features=4),
             nn.ReLU(True),  # activation
-            nn.MaxPool2d(kernel_size=2, stride=2, padding=0)  # 池化層(池化核爲2*2,步長爲2)=最大池化  # output shape (16, 128, 128)
+            nn.MaxPool2d(kernel_size=2, stride=2, padding=0)  # 池化層(池化核爲2*2,步長爲2)=最大池化  # output shape (4, 112, 112)
         )
-        self.layer2 = nn.Sequential(  # input shape (16, 128, 128)
+        self.layer2 = nn.Sequential(  # input shape (4, 112, 112)
             nn.Conv2d(
                 in_channels=4,
                 out_channels=8,
                 kernel_size=3,
                 stride=1,
-                padding=1
-            ),  # output shape (32, 128, 128)
+                padding=1,
+                bias=True
+        ),  # output shape (8, 112, 112)
             nn.BatchNorm2d(num_features=8),
             nn.ReLU(True),  # activation
-            nn.MaxPool2d(kernel_size=2, stride=2, padding=0)  # output shape (32, 64, 64)
+            nn.MaxPool2d(kernel_size=2, stride=2, padding=0)  # output shape (8, 56, 56)
         )
         self.layer3 = nn.Sequential(
             nn.Conv2d(
@@ -43,11 +46,12 @@ class ConvNet(nn.Module):
                 out_channels=16,
                 kernel_size=3,
                 stride=1,
-                padding=1
-            ),  # output shape (64, 64, 64)
+                padding=1,
+                bias=True
+            ),  # output shape (16, 56, 56)
             nn.BatchNorm2d(num_features=16),
             nn.ReLU(True),
-            nn.MaxPool2d(kernel_size=2, stride=2, padding=0)  # output shape (64, 32, 32), zero-padding
+            nn.MaxPool2d(kernel_size=2, stride=2, padding=0)  # output shape (16, 28, 28), zero-padding
         )
         self.drop_out = nn.Dropout(p=0.2, inplace=False)  # 防止过拟合
         # self.drop_out = nn.Dropout2d(p=0.25, inplace=False)
@@ -63,7 +67,7 @@ class ConvNet(nn.Module):
         # 初始化卷积层, full connection
         # fully connected layer, output 4 classes
         self.fc_layers = nn.Sequential(
-            nn.Linear(in_features=32 * 32 * 16, out_features=16),  # 256x256
+            nn.Linear(in_features=28 * 28 * 16, out_features=16),  # 224x224
             # nn.Linear(in_features=64 * 64 * 64, out_features=1024),  # 512x512
             # nn.Linear(in_features=80 * 80 * 64, out_features=512),    # 640x640
             # nn.BatchNorm1d(512),
@@ -97,5 +101,5 @@ class ConvNet(nn.Module):
         output = self.fc_layers(output)
         output = self.fc_drop(output)
 
-        # return output  # return output for visualization
-        return F.log_softmax(output, dim=1)  # 輸出用 softmax 處理
+        return output  # return output for visualization
+        # return F.log_softmax(output, dim=1)  # 輸出用 softmax 處理

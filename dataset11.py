@@ -5,8 +5,8 @@ from torchvision import transforms
 import torchvision.transforms.functional as TF
 from PIL import Image
 # import random
-# from argparses2 import *
-from argparses3 import *
+
+from argparses2 import *
 
 
 def default_loader(path):
@@ -75,8 +75,8 @@ class ImageFolder(Dataset):
 # 通过torchvision.transforms.Compose将三个类结合在一起
 grayTransform = transforms.Compose([transforms.Grayscale(num_output_channels=1),
                                     transforms.RandomGrayscale(p=0.1),
-                                    transforms.Resize(256),
-                                    # transforms.Resize(224),
+                                    # transforms.Resize(256),
+                                    transforms.Resize(224),
                                     # 随机切成224x224 大小图片 统一图片格式
                                     transforms.CenterCrop(224),
                                     # transforms.RandomRotation(degrees=15),
@@ -104,12 +104,11 @@ doTransform = transforms.Compose([
     # transforms.Resize(size=(640, 640), interpolation=3),
     # transforms.Resize(size=(256, 256)),
     # transforms.Resize(256, interpolation=2),
-    transforms.Resize(256),
-    # transforms.Resize(224),
+    # transforms.Resize(256),
+    transforms.Resize(224),
     # transforms.Resize(256, interpolation=3),
     # transforms.CenterCrop(size=224),
     # transforms.CenterCrop(256),
-    transforms.CenterCrop(224),
     # transforms.CenterCrop(size=(512, 512)),
     # transforms.RandomCrop(256, padding=4),
     # transforms.RandomCrop(256),
@@ -121,8 +120,7 @@ doTransform = transforms.Compose([
     # Normalize 会让所有像素范围处于-1到+1之间
     # transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
     # transforms.Normalize((0.4914,), (0.2023,)),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                         std=[0.229, 0.224, 0.225]),
+    # transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     # transforms.Normalize(mean=(0.485,), std=(0.229,))
     # transforms.Normalize(mean=(0.456,), std=(0.224,))
     # transforms.Normalize(mean=(0.406,), std=(0.225,))
@@ -132,12 +130,9 @@ doTransform = transforms.Compose([
 
 # Normalize the test set same as training set without augmentation
 testTransform = transforms.Compose([
-    transforms.Resize(256),
-    # transforms.Resize(224),
-    transforms.CenterCrop(224),
+    # transforms.Resize(256),
+    transforms.Resize(224),
     transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                         std=[0.229, 0.224, 0.225]),
     # transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
     # transforms.Normalize((0.4914,), (0.2023,)),
 ])
@@ -313,7 +308,11 @@ if train_size == 750:
 train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True, num_workers=workers, pin_memory=True)
 # 如果内存不够大，使用多GPU训练的时候可通过设置pin_memory为False，当然使用精度稍微低一点的数据类型有时也效果
 # train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True, num_workers=workers, pin_memory=False)
-valid_loader = DataLoader(dataset=valid_dataset, batch_size=valid_size, shuffle=False, num_workers=workers, pin_memory=True)
+# valid_loader = DataLoader(dataset=valid_dataset, batch_size=valid_size, shuffle=False, num_workers=workers, pin_memory=True)
+
+# 因為會當掉...raise RuntimeError('DataLoader worker (pid(s) {}) exited unexpectedly'.format(pids_str)), 改 num_workers=0
+valid_loader = DataLoader(dataset=valid_dataset, batch_size=valid_size, shuffle=False, num_workers=0, pin_memory=True)
+
 # valid_loader = DataLoader(dataset=valid_dataset, batch_size=valid_size, shuffle=True, num_workers=workers, pin_memory=False)
 # test_loader = DataLoader(dataset=test_dataset, batch_size=1, shuffle=True, num_workers=workers, pin_memory=True)
 test_loader = DataLoader(dataset=test_dataset, batch_size=test_size, shuffle=False, num_workers=workers, pin_memory=True)

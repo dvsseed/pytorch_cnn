@@ -47,6 +47,7 @@ class ResNet(nn.Module):
         self.layer3 = self.make_layer(ResidualBlock, 256, 2, stride=2)
         self.layer4 = self.make_layer(ResidualBlock, 512, 2, stride=2)
         self.fc = nn.Linear(512, num_classes)
+        # self.fc = nn.Linear(81920, num_classes)
 
     def make_layer(self, block, channels, num_blocks, stride):
         strides = [stride] + [1] * (num_blocks - 1)  # strides=[1,1]
@@ -62,11 +63,12 @@ class ResNet(nn.Module):
         out = self.layer2(out)
         out = self.layer3(out)
         out = self.layer4(out)
-        out = F.avg_pool2d(out, 4)
+        # out = F.avg_pool2d(out, 4)
+        out = F.avg_pool2d(out, 32)
         out = out.view(out.size(0), -1)
         out = self.fc(out)
         # return out
-        return F.log_softmax(x, dim=1)  # 輸出用 softmax 處理
+        return F.log_softmax(out, dim=1)  # 輸出用 softmax 處理
 
 
 def ResNet18():
